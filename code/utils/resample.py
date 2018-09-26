@@ -59,16 +59,13 @@ class GenerateCatalog:
 		self.num_events = rm.poisson(lam=poisson_par, size=num_catalogs)
 
 		#distribute uniformly over time
-		t_event = rm.uniform(low=0.0, high=self.duration, size=self.num_events.sum())
+		self.t_event = rm.uniform(low=0.0, high=self.duration, size=self.num_events.sum())
 		binary_parameters_event = self.binary_kde.resample(size=self.num_events.sum())
+		for i, name in enumerate(self.binary_kde.names):
+			setattr(self, name, binary_parameters_event[:,i])
 
-		catalog_num = np.repeat(np.arange(num_catalogs), self.num_events)
-		names = 'cat,t_coal'
-		for nm in self.binary_kde.names:
-			names += ',' + nm
-
-		output = np.core.records.fromarrays([catalog_num, t_event]+ [bp for bp in binary_parameters_event.T], names=names)
-		return output
+		self.catalog_num = np.repeat(np.arange(num_catalogs), self.num_events)
+		return
 
 if __name__ == "__main__":
 	from astropy.cosmology import Planck15 as cosmo

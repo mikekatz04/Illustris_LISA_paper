@@ -14,6 +14,11 @@ from scipy.special import hyp2f1
 import numpy as np
 import pdb
 
+def mass_ratio_func(m1, m2):
+		up = (m1 >= m2)
+		down = (m1 < m2)
+		return up* (m2/m1) + down* (m1/m2)
+
 class MassiveBlackHoleBinaries:
 	def evolve(self):
 		self.formation_time = cosmo.age(self.z).value*1e9
@@ -43,9 +48,9 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 
 		#small s denotes secondary,small m is primary
 		#major black hole mass
-		self.M = m1*major_1 + m2*major_2
+		self.M = self.m1 = m1*major_1 + m2*major_2
 		#minor black hole mass
-		self.m = m1*major_2 + m2*major_1
+		self.m = self.m2 = m1*major_2 + m2*major_1
 
 		self.vel_disp_m = vel_disp_1*major_1 + vel_disp_2*major_2
 		self.vel_disp_s = vel_disp_1*major_2 + vel_disp_2*major_1
@@ -58,7 +63,7 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 
 		self.R_e_m = separation
 
-		self.q = self.mass_ratio_func()
+		self.q = mass_ratio_func(self.M, self.m)
 
 		self.e_0 = e_0
 
@@ -107,11 +112,6 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 		return self.large_scale_decay_time + self.DF_timescale + self.Hardening_GW_timescale, self.e_f
 
 		#return np.asarray([large_scale_decay_time, DF_timescale, Hardening_timescale])
-
-	def mass_ratio_func(self):
-		up = (self.M >= self.m)
-		down = (self.M < self.m)
-		return up* (self.m/self.M) + down* (self.M/self.m)
 
 	def e_interp_for_vec(q_arr, gamma_arr):
 		if isinstance(q_arr, float) == True or isinstance(q_arr, np.float64) == True or isinstance(q_arr, np.float32) == True:
