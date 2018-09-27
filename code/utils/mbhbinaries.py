@@ -36,6 +36,15 @@ class MassiveBlackHoleBinaries:
 
 		return
 
+class MagicMergers(MassiveBlackHoleBinaries):
+	def __init__(self, z):
+		self.z = z
+
+	def calculate_timescale(self):
+		#Magic mergers, no timescale
+		return 0.0, 0.0
+
+
 class EvolveFDFA(MassiveBlackHoleBinaries):
 		#put all quantities into arrays to determine which is major galaxy and minor galaxy'
 

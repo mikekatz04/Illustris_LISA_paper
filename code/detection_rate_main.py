@@ -4,9 +4,10 @@ import time
 
 import numpy as np
 from astropy.cosmology import Planck15 as cosmo
+import scipy.interpolate as interpolate
 
 from utils.mergerrate import MergerRate
-from utils.mbhbinaries import EvolveFDFA, MassiveBlackHoleBinaries, AnalyticApproximations, mass_ratio_func
+from utils.mbhbinaries import EvolveFDFA, MagicMergers, MassiveBlackHoleBinaries, AnalyticApproximations, mass_ratio_func
 from utils.resample import KDEResample, GenerateCatalog
 from utils.parallelsnr import ParallelSNR, parallel_snr_func
 
@@ -28,8 +29,6 @@ def detection_rate_main(num_catalogs, t_obs, duration, fp, evolve_key_guide, kde
 	zs = np.linspace(0.0, 20.0, 10000)
 	age = cosmo.age(zs).value*1e9
 
-	import scipy.interpolate as interpolate
-
 	check = interpolate.interp1d(age, zs)
 
 	#merger_rate_kwargs['z_vals'] = mbh.z_coal = np.interp(mbh.coalescence_time[inds_keep], age, zs)
@@ -38,6 +37,7 @@ def detection_rate_main(num_catalogs, t_obs, duration, fp, evolve_key_guide, kde
 	#### Merger Rate Per Year ####
 	mr_class = MergerRate(**merger_rate_kwargs)
 	merger_rate = mr_class.merger_rate()
+	print('merger rate:', merger_rate)
 
 	#### Prepare KDE ####
 
@@ -104,6 +104,10 @@ if __name__ == "__main__":
 
 	evolve_key_guide = {'m1':'mass_new_prev_in', 'm2':'mass_new_prev_out', 'z':'redshift', 'separation':'separation', 'gamma':'gamma', 'vel_disp_1':'vel_disp_prev_in',  'vel_disp_2':'vel_disp_prev_out'}
 	evolve_class = EvolveFDFA
+
+	#evolve_key_guide = {'z':'redshift'}
+	#evolve_class = MagicMergers
+
 	merger_rate_kwargs = {'Vc':106.5**3, 'dz':0.001, 'zmax':10.0}
 
 	parallel_kwargs = {'num_processors':None, 'num_splits':1000, 'verbose':10}
