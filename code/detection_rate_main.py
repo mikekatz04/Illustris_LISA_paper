@@ -7,7 +7,9 @@ from astropy.cosmology import Planck15 as cosmo
 import scipy.interpolate as interpolate
 
 from utils.mergerrate import MergerRate
-from utils.mbhbinaries import EvolveFDFA, MagicMergers, MassiveBlackHoleBinaries, AnalyticApproximations, mass_ratio_func
+from utils.mbhbinaries import MassiveBlackHoleBinaries, AnalyticApproximations, mass_ratio_func
+from utils.evolveFDFA import EvolveFDFA
+from utils.basicmergers import MagicMergers
 from utils.resample import KDEResample, GenerateCatalog
 from utils.parallelsnr import ParallelSNR, parallel_snr_func
 
@@ -95,7 +97,7 @@ if __name__ == "__main__":
 	num_catalogs = 10000
 	t_obs = 10.0 #years
 	duration = 100.0 #years
-	fp = '../data_ready_june_snap_lim_1.txt'
+	fp = 'simulation_input_data.txt'
 
 	kde_key_guide = OrderedDict()
 	kde_key_guide['m1'] = 'mass_new_prev_in'
