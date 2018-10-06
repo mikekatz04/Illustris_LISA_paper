@@ -43,6 +43,8 @@ class LocateBHs:
 			delete_snapshot_files
 			combine_black_hole_files
 			delet_snap_bh_files
+
+		MAIN JOB: locate all the black holes and match them to their subhalo
 	"""
 
 	def __init__(self, ill_run=1, directory='./extraction_files/', num_chunk_files_per_snapshot=512, num_groupcat_files=1, first_snap_with_bhs=30, skip_snaps=[53,55], max_snap=135):

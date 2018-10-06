@@ -8,11 +8,12 @@ from utils.generalfuncs import get
 
 class SubPartIDs:
 	"""
-	SubPartIDs is the most pivotal change to the date for better analysis. In the Illustris simulation, when two black hole particles are merged, the bh particle ID that lives on is chosen at random. This causes problems with continuity in following a black hole amongst other issues. In this code, the larger mass black holes is chosen to live on. Therefore, we locate all mergers that need an adjustment. This adjustment is applied to merger, details, and all bhs files for any time after the merger. 
+	SubPartIDs is the most pivotal change to the date for better analysis. In the Illustris simulation, when two black hole particles are merged, the bh particle ID that lives on is chosen at random. This causes problems with continuity in following a black hole amongst other issues. In this code, the larger mass black holes is chosen to live on. Therefore, we locate all mergers that need an adjustment. This adjustment is applied to merger, details (default is to not do details catalog), and all bhs files for any time after the merger. 
 
 		attributes:
 			:param	ill_run - (int) - illustris run to use
 			:param	directory - (str) - directory to work out of
+			:param  run_details - (bool) - run details catalog through this process. Default is False
 
 			mergers_needed - (bool) - need to sub ids in merger file
 			all_needed - (bool) - need to sub ids in all bhs file
@@ -27,9 +28,10 @@ class SubPartIDs:
 			download_details_file
 			add_new_ids_to_details_file
 
+		MAIN JOB: subsitute indices into sublink merger trees to make descending a tree easier and faster
 	"""
 
-	def __init__(self, ill_run=1, directory='./extraction_files/'):
+	def __init__(self, ill_run=1, directory='./extraction_files/', run_details=False):
 		self.ill_run = ill_run
 		self.directory = directory
 
@@ -49,14 +51,17 @@ class SubPartIDs:
 			if 'ParticleIDs_new' in list(f):
 				self.all_needed = False
 
-		if 'bhs_details_new.hdf5' in os.listdir(self.directory):
-			with h5py.File('bhs_details_new', 'r') as f:
-				if 'id_new' in list(f):
-					self.details_needed = False
-				else:
-					self.details_needed = True
+		if run_details:
+			if 'bhs_details_new.hdf5' in os.listdir(self.directory):
+				with h5py.File('bhs_details_new', 'r') as f:
+					if 'id_new' in list(f):
+						self.details_needed = False
+					else:
+						self.details_needed = True
+			else:
+				self.details_needed = True
 		else:
-			self.details_needed = True
+			self.details_needed = False
 
 	def download_original_bh_merger_file(self):
 		"""

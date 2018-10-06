@@ -5,6 +5,7 @@ from utils.get_group_subs import GetGroupSubs
 from utils.find_sublink_indices import SublinkIndexFind
 from utils.find_bhs import LocateBHs
 from utils.sub_partIDs_in_mergs import SubPartIDs
+from utils.find_bad_black_holes import FindBadBlackHoles
 
 
 class MainProcess:
@@ -110,13 +111,14 @@ class MainProcess:
 	def sub_partIDs_in_mergs(self):
 		"""
 		##### Substitue Particle IDs for Continuity #####
-			Find all mergers where the low mass black hole ID lives on. Update IDs for all future events so that the more massive bh ID lives on. This adds columns with new IDs to ``bhs_mergers_new.hdf5``, ``bhs_all_new.hdf5``, and ``bhs_details_new.hdf5``. 
+			Find all mergers where the low mass black hole ID lives on. Update IDs for all future events so that the more massive bh ID lives on. This adds columns with new IDs to ``bhs_mergers_new.hdf5``, ``bhs_all_new.hdf5``, and ``bhs_details_new.hdf5``. This process works very well but is not perfect. Where this fails, we still keep black holes in the end that are 10M_{seed} (>10^6) (see Kelley et al 2017 for this cut). 
 		"""
 		print('\nStart substituting IDs for continuity.')
 
 		sub_partIDs_in_mergs_kwargs = {
 		'ill_run':3, 
-		'directory':self.directory
+		'directory':self.directory,
+		'run_details':False,
 		}
 
 		sub_ids = SubPartIDs(**sub_partIDs_in_mergs_kwargs)
@@ -129,6 +131,7 @@ class MainProcess:
 		if sub_ids.all_needed:
 			sub_ids.add_new_ids_to_all_bhs_file()
 
+		#by default the details file is not done
 		if sub_ids.details_needed:
 			sub_ids.add_new_ids_to_details_file()
 
@@ -137,6 +140,23 @@ class MainProcess:
 
 		return
 
+	def find_bad_black_holes(self):
+		"""
+		##### Find Bad Black Holes #####
+			Find all bad black holes resulting from fly-by encounters of host galaxies. Bad black holes are spawned by a host galaxy after it loses its original black hole in the fly-by encounter. See the documentation for `find_bad_black_holes.py` for information on this procedure. This procedure is the key step to accessing the near-seed mass black holes. 
+		"""
+		print('\nStart finding bad black holes.')
+
+		find_bad_black_holes_kwargs = {
+		'directory':self.directory
+		}
+
+		bad_bhs = FindBadBlackHoles(**find_bad_black_holes_kwargs)
+		if bad_bhs.needed:
+			bad_bhs.search_bad_black_holes()
+
+		print('Finished finding bad black holes.\n')
+		return
 
 def main():
 
@@ -153,6 +173,7 @@ def main():
 	#main_process.find_sublink_indices()
 	main_process.gather_black_hole_information()
 	main_process.sub_partIDs_in_mergs()
+	main_process.find_bad_black_holes()
 
 
 
