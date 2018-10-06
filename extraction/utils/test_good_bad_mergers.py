@@ -1,8 +1,81 @@
-import numpy as np 
+"""
+The purpose of this code is to determine which mergers are good and bad. 
+"""
+import os
+import h5py 
+import numpy as np  
 import pdb
-import h5py
+import matplotlib.pyplot as plt
 
-h=0.704
+class TestGoodBadMergers:
+	"""
+	TestGoodBadMergers is used to determine if the merger is good or bad in terms of its black holes. The criteria to be a bad merger is the following:
+
+		1) Either constituent black hole respawned in a fly-by encounter of its host galaxy. This is caught by FindBadBlackHoles class and recorded in ``bad_black_holes.txt``. 
+		2) Either constituent exists in the simulation for 1 or less snapshots. (This only applies to black holes greater than 10^6. The algorithms used here are not perfect and can let a few of these slip by.)
+	"""
+
+	def __init__(self, directory):
+		self.directory = directory
+
+		if 'good_mergers.txt' in os.listdir(self.directory):
+			self.needed = False
+
+		else:
+			self.needed = True
+
+	def test_mergers(self):
+		"""
+		Test if the mergers are good or bad. Criterion is stated in the description of the TestGoodBadMergers class object.
+		"""
+
+		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'r') as f:
+
+			#get the unique ides in the all bhs dataset, as well as their first appearence (index) and count of appearences (counts)
+			unique_part_ids_all, index, counts = np.unique(f['ParticleIDs_new'][:][::-1], return_counts=True, return_index=True)
+
+			### REMOVING ALL BLACK HOLES THAT ONLY APPEAR FOR ONE SNAPSHOT IN THE FULL BH-ALL DATASET and that have mass less than 10^6. (The merger switch algoritm is not perfect, so we cut out any issues below 10^6) ###
+			bad_add = np.where((counts == 1) &(f['BH_Mass'][:][::-1][index] > 1e6))[0]
+
+		#read in bad black holes 
+		bad_arr = np.genfromtxt('bad_black_holes.txt', dtype=None)
+
+		bad_ids = bad_arr[:,0].astype(np.uint64)
+
+		#combine the black holes from the fly-by/descendant search with black holes that exist less than 1 snapshot (less than 10^6)
+		bad_ids = np.unique(np.concatenate([bad_ids, unique_part_ids_all[bad_add]]))
+
+
+		
+		#### GOOD MERGER IF THE BOTH CONSTITUENT BLACKHOLES APPEAR MORE THAN ONE TIME IN THE ''ALL'' DATASET, AND ARE NOT CAUGHT IN `find_bad_black_holes.py` to be rebirthed ######
+		good = []
+
+		# read in merger data
+		with h5py.File(self.directory + 'bhs_mergers_new.hdf5', 'r') as f_merg:
+			time = f_merg['time'][:]
+			mass_in_new = f_merg['mass_in_new'][:]
+			mass_out_new = f_merg['mass_out_new'][:]
+			id_in_new = f_merg['id_in_new'][:]
+			id_out_new = f_merg['id_out_new']
+
+		print('find good/bad')
+		for m in range(len(time)): 
+
+			#if both masses are above 10^6, we keep it       
+			if mass_in_new[m] >= 1e6 and mass_out_new[m] >= 1e6:
+				good.append(m)
+				continue
+
+			#check if either constituent is in the bad_ids
+			if id_in_new[m] not in bad_ids and id_out_new[m] not in bad_ids:
+
+				#make sure both constituent bhs are in the particle IDs in the all bhs dataset
+				if id_in_new[m] in unique_part_ids_all and id_out_new[m] in unique_part_ids_all:
+					good.append(m)
+
+		#read out
+		np.savetxt(self.directory + 'good_mergers.txt', np.array([np.array(good)]).T)
+		return
 
 
 class FindBadBlackHoles:
@@ -40,7 +113,7 @@ class FindBadBlackHoles:
 	def __init__(self, directory='./extraction_files'):
 		self.directory = directory
 
-		if 'bad_arr.txt' in os.listdir(self.directory):
+		if 'bad_black_holes.txt' in os.listdir(self.directory):
 			self.needed = False
 		else:
 			self.needed = True
@@ -126,7 +199,8 @@ class FindBadBlackHoles:
 		# read out
 		bad_arr = np.asarray(bad, dtype=[('id', np.dtype(np.uint64)), ('mass', np.dtype(float)), ('snap', np.dtype(np.int32))])
 
-		np.savetxt(self.directory + 'bad_arr.txt', bad_arr)
+		np.savetxt(self.directory + 'bad_black_holes.txt', bad_arr)
 		f_sublink.close()
 		return
+
 
