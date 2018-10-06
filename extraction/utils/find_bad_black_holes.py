@@ -51,7 +51,7 @@ class FindBadBlackHoles:
 		"""
 
 		#get initial information and calculate raw subhalo id number according to Illustris convention
-		with h5py.File('bhs_all_new.hdf5', 'r') as f_all_bhs:
+		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'r') as f_all_bhs:
 			part_ids_all = f_all_bhs['ParticleIDs_new'][:]
 			snaps_all = f_all_bhs['Snapshot'][:]
 			subhalos_all = f_all_bhs['Subhalo'][:]
@@ -80,7 +80,7 @@ class FindBadBlackHoles:
 
 		#open the sublink tree file. Keep it open because it is 
 		#too much information to store it all in memory
-		f_sublink = h5py.File('sublink_short.hdf5', 'r')
+		f_sublink = h5py.File(self.directory + 'sublink_short.hdf5', 'r')
 
 		#get the raw IDs from sublink and sort them
 		subID_raw_sublink = np.asarray(f_sublink['SubfindID'][:310600757] + f_sublink['SnapNum'][:310600757]*1e12, dtype=np.int64)
