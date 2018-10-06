@@ -137,20 +137,6 @@ class MainProcess:
 
 		return
 
-	def manual_filtering(self):
-		"""
-		##### Manual Filtering of Remaining Dataset #####
-		There is a chance that a few mergers will be left over lacking continuity. To filter these, the jupyter notebook `manual_filtering.ipynb` is provided in the utils/ folder. In the original Illustris-1 run, this was needed for ~100 mergers. The most likely occurence for this is many seeds merging quickly into a larger black hole, confusing the algorithm. When completed, the jupyter notebook prints a file called ``manual_filtering_completed.txt``. When this file is in the directory, this code will allow pass through.
-
-			If you do not want to perform this task, you can run the cell that creates the file or create it yourself. 
-		"""
-
-		if 'fix_list.txt' not in os.listdir(self.directory) and 'manual_search_not_done.txt' not in os.listdir(self.directory):
-			raise Exception('Need to run manual filtering. ``manual_filtering_completed.txt`` not found.')
-
-		print('MANUAL FILTERING: PASS')
-		return
-
 
 def main():
 
@@ -167,8 +153,6 @@ def main():
 	#main_process.find_sublink_indices()
 	main_process.gather_black_hole_information()
 	main_process.sub_partIDs_in_mergs()
-	main_process.manual_filtering()
-
 
 
 
