@@ -1,11 +1,10 @@
 """
-The purpose of this code is to determine which mergers are good and bad. 
+MAIN PURPOSE: determine which mergers are good and bad. 
 """
+
 import os
 import h5py 
-import numpy as np  
-import pdb
-import matplotlib.pyplot as plt
+import numpy as np
 
 class TestGoodBadMergers:
 	"""
@@ -13,6 +12,15 @@ class TestGoodBadMergers:
 
 		1) Either constituent black hole respawned in a fly-by encounter of its host galaxy. This is caught by FindBadBlackHoles class and recorded in ``bad_black_holes.txt``. 
 		2) Either constituent exists in the simulation for 1 or less snapshots. (This only applies to black holes greater than 10^6. The algorithms used here are not perfect and can let a few of these slip by.)
+
+		attributes:
+			:param	directory - (str) - directory to work in
+
+			needed - (bool) - if this code needs to run
+
+		methods:
+			get_subs_from_all_bhs
+			search_bad_black_holes
 	"""
 
 	def __init__(self, directory):
@@ -102,6 +110,8 @@ class FindBadBlackHoles:
 
 		attributes:
 			:param	directory - (str) - directory to work in
+
+			needed - (bool) - if this code needs to run
 
 		methods:
 			get_subs_from_all_bhs

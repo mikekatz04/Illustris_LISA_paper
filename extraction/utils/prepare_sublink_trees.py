@@ -1,6 +1,9 @@
+"""
+MAIN PURPOSE: download sublink files and combine them to create ``sublink_short_i.hdf5`` and ``sublink_short.hdf5`` files.
+"""
+
 import numpy as np 
 import h5py 
-import pdb
 import os
 
 from utils.generalfuncs import get
@@ -22,8 +25,6 @@ class PrepSublink:
 		methods: 
 			download_and_convert_to_short 
 			combine_sublink_shorts
-
-		MAIN JOB: CREATE ``sublink_short_i.hdf5`` and ``sublink_short.hdf5`` files.
 	"""
 
 

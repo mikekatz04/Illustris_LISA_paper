@@ -1,8 +1,15 @@
+"""
+Support functions for all the scripts in utils.
+"""
+
 import requests
 
 
 #refer to illustris API
 def get(path, params=None):
+	"""
+	This function retrieves files from the Illustris server. See http://www.illustris-project.org/data/docs/api/ for more information on this function.
+	"""
 	# make HTTP GET request to path
 	headers = {"api-key":"3d6cce0a4f31c43ee502cfdeb2302ded"}
 	r = requests.get(path, params=params, headers=headers)

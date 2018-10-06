@@ -1,7 +1,10 @@
+"""
+MAIN PURPOSE: subsitute indices into sublink merger trees to make descending a tree easier and faster
+"""
+
 import os  
 import h5py
 import numpy as np 
-import pdb
 
 from utils.generalfuncs import get
 
@@ -27,8 +30,6 @@ class SubPartIDs:
 			add_new_ids_to_all_bhs_file
 			download_details_file
 			add_new_ids_to_details_file
-
-		MAIN JOB: subsitute indices into sublink merger trees to make descending a tree easier and faster
 	"""
 
 	def __init__(self, ill_run=1, directory='./extraction_files/', run_details=False):

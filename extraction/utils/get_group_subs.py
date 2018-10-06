@@ -1,7 +1,10 @@
+"""
+MAIN PURPOSE: gather subhalos with black holes and create ``subs_with_bhs.hdf5`` file. 
+"""
 import h5py
 import os
-import time
 import numpy as np 
+
 from utils.generalfuncs import get
 
 class GetGroupSubs:
@@ -20,8 +23,6 @@ class GetGroupSubs:
 
 		methods: 
 			download_and_add_file_info 
-
-		MAIN JOB: CREATE ``subs_with_bhs.hdf5`` file. 
 	"""
 
 

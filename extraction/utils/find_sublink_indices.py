@@ -1,6 +1,8 @@
+"""
+MAIN PURPOSE: append indices for SubhaloID and DescendantID to ``sublink_short.hdf5`` file for easy descendant searching. 
+"""
 import numpy as np 
 import h5py
-import pdb
 
 class SublinkIndexFind:
 	"""
@@ -14,8 +16,6 @@ class SublinkIndexFind:
 
 		methods: 
 			find_indices 
-
-		MAIN JOB: APPEND INDICES FOR SubhaloID and DescendantID to ``sublink_short.hdf5`` file for easy descendant searching. 
 	"""
 
 	def __init__(self, num_files=6, directory='./extraction_files'):

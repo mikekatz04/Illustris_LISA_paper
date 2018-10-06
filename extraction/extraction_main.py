@@ -1,3 +1,7 @@
+"""
+This file controls the Illustris black hole extraction and filtering process. 
+"""
+
 import os
 
 from utils.prepare_sublink_trees import PrepSublink
@@ -5,10 +9,24 @@ from utils.get_group_subs import GetGroupSubs
 from utils.find_sublink_indices import SublinkIndexFind
 from utils.find_bhs import LocateBHs
 from utils.sub_partIDs_in_mergs import SubPartIDs
-from utils.find_bad_black_holes import FindBadBlackHoles
+from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
 
 
 class MainProcess:
+	"""
+	MainProcess contains and runs each major piece associated with the Illustris black hole extraction and filtering process. 
+
+		attributes:
+			:param	directory - (str) - directory to work in
+
+		methods:
+			sublink_extraction
+			get_group_subs
+			find_sublink_indices
+			gather_black_hole_information
+			sub_partIDs_in_mergs
+			find_good_bad_mergers
+	"""
 
 	def __init__(self, directory):
 		self.directory = directory
@@ -44,11 +62,11 @@ class MainProcess:
 		print('\nStart group catalog extraction for subhalos with black holes.')
 
 		get_group_subs_kwargs = {
-		'first_snap_with_bhs':31, 
-		'snaps_to_skip':[53,55], 
-		'additional_keys':['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'], 
-		'ill_run':3, 
-		'directory':self.directory
+			'first_snap_with_bhs':31, 
+			'snaps_to_skip':[53,55], 
+			'additional_keys':['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'], 
+			'ill_run':3, 
+			'directory':self.directory
 		}
 
 		get_groupcat = GetGroupSubs(**get_group_subs_kwargs)
@@ -68,8 +86,8 @@ class MainProcess:
 		print('\nStart index find within subhalo_short.hdf5')
 
 		find_sublink_indices_kwargs = {
-		'num_files': 6,
-		'directory':self.directory
+			'num_files': 6,
+			'directory':self.directory
 		}
 
 		sublink_indices = SublinkIndexFind(**find_sublink_indices_kwargs)
@@ -89,13 +107,13 @@ class MainProcess:
 		print('\nStart finding all bhs particle information.')
 
 		gather_black_hole_information_kwargs = {
-		'ill_run':3, 
-		'directory':self.directory, 
-		'num_chunk_files_per_snapshot':512, 
-		'num_groupcat_files':1, 
-		'first_snap_with_bhs':30, 
-		'skip_snaps':[53,55], 
-		'max_snap':135
+			'ill_run':3, 
+			'directory':self.directory, 
+			'num_chunk_files_per_snapshot':512, 
+			'num_groupcat_files':1, 
+			'first_snap_with_bhs':30, 
+			'skip_snaps':[53,55], 
+			'max_snap':135
 		}
 
 		find_bhs = LocateBHs(**gather_black_hole_information_kwargs)
@@ -116,9 +134,9 @@ class MainProcess:
 		print('\nStart substituting IDs for continuity.')
 
 		sub_partIDs_in_mergs_kwargs = {
-		'ill_run':3, 
-		'directory':self.directory,
-		'run_details':False,
+			'ill_run':3, 
+			'directory':self.directory,
+			'run_details':False,
 		}
 
 		sub_ids = SubPartIDs(**sub_partIDs_in_mergs_kwargs)
@@ -140,23 +158,35 @@ class MainProcess:
 
 		return
 
-	def find_bad_black_holes(self):
+	def test_good_bad_mergers(self):
 		"""
-		##### Find Bad Black Holes #####
-			Find all bad black holes resulting from fly-by encounters of host galaxies. Bad black holes are spawned by a host galaxy after it loses its original black hole in the fly-by encounter. See the documentation for `find_bad_black_holes.py` for information on this procedure. This procedure is the key step to accessing the near-seed mass black holes. 
+		##### Find Good/Bad Mergers #####
+			First: we find all bad black holes resulting from fly-by encounters of host galaxies. Bad black holes are spawned by a host galaxy after it loses its original black hole in the fly-by encounter. See the documentation for `find_bad_black_holes.py` for information on this procedure. This procedure is the key step to accessing the near-seed mass black holes. 
+
+			Second: combine these black holes with bhs that exist for less than two snapshots and have masses less than 10^6. This then produces the ``good_mergers.txt`` file detailed the good mergers by black hole standards. 
 		"""
-		print('\nStart finding bad black holes.')
+		print('\nStart finding good/bad mergers.')
 
 		find_bad_black_holes_kwargs = {
-		'directory':self.directory
+			'directory':self.directory
 		}
 
 		bad_bhs = FindBadBlackHoles(**find_bad_black_holes_kwargs)
 		if bad_bhs.needed:
 			bad_bhs.search_bad_black_holes()
 
-		print('Finished finding bad black holes.\n')
+		test_good_bad_mergers_kwargs = {
+			'directory':self.directory
+		}
+
+		good_or_bad_mergers = TestGoodBadMergers(**test_good_bad_mergers_kwargs)
+		if good_or_bad_mergers.needed:
+			good_or_bad_mergers.test_mergers()
+
+		print('Finished finding good/bad mergers.\n')
 		return
+
+
 
 def main():
 
@@ -173,7 +203,7 @@ def main():
 	#main_process.find_sublink_indices()
 	main_process.gather_black_hole_information()
 	main_process.sub_partIDs_in_mergs()
-	main_process.find_bad_black_holes()
+	main_process.test_good_bad_mergers()
 
 
 
