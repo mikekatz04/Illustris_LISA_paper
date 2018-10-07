@@ -11,6 +11,7 @@ from utils.find_bhs import LocateBHs
 from utils.sub_partIDs_in_mergs import SubPartIDs
 from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
 from utils.get_subhalos_for_download import FindSubhalosForSearch
+from utils.download_needed import DownloadNeeded
 
 
 class MainProcess:
@@ -208,6 +209,27 @@ class MainProcess:
 
 		return
 
+	def download_needed(self):
+		"""
+		##### Download All Needed Subhalos #####
+			This downloads all the particle information needed in each subhalo to analyze merger-related host galaxies. For remnent host galaxies, we want information about stars, gas, dm, and bhs. For constituent host galaxies, we want information about bhs and stars. (bhs are not really necessary because we have this information, but the memory necessary for this is really small, so we include it for completeness.)
+		"""
+		print('\nStart downloading subhalos.')
+
+		download_needed_kwargs = {
+			'directory':self.directory, 
+			'ill_run':1,
+		}
+
+		download = DownloadNeeded(**download_needed_kwargs)
+		#this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``. 
+		download.download_needed_subhalos()
+
+
+		print('Finished downloading subhalos.\n')
+
+		return
+
 
 def main():
 
@@ -226,10 +248,12 @@ def main():
 	main_process.sub_partIDs_in_mergs()
 	main_process.test_good_bad_mergers()
 	main_process.get_subhalos_for_download()
-
+	main_process.download_needed()
 
 
 
 
 if __name__ == '__main__':
+	############ ADD ARG PARSER TO PICK WHICH PART TO RUN ################
+
 	main()
