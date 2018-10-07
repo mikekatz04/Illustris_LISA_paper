@@ -26,3 +26,11 @@ def get(path, params=None):
 			f.write(r.content)
 		return filename # return the filename string
 	return r
+
+def download_sub(base_url, snap,sub,cutout_request={}):
+	find_url = base_url + "snapshots/" + str(int(snap)) + "/" + 'subhalos' + "/" + str(int(sub))
+	find_url += "/" + "cutout.hdf5"
+
+	return get(find_url,cutout_request)
+
+
