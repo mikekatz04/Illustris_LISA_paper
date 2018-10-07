@@ -10,6 +10,7 @@ from utils.find_sublink_indices import SublinkIndexFind
 from utils.find_bhs import LocateBHs
 from utils.sub_partIDs_in_mergs import SubPartIDs
 from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
+from utils.get_subhalos_for_download import FindSubhalosForSearch
 
 
 class MainProcess:
@@ -183,9 +184,29 @@ class MainProcess:
 		if good_or_bad_mergers.needed:
 			good_or_bad_mergers.test_mergers()
 
-		print('Finished finding good/bad mergers.\n')
+		print('Finished finding good/bad mergers and created file ``good_mergers.txt``.\n')
 		return
 
+	def get_subhalos_for_download(self):
+		"""
+		##### Gather Subhalos for Download #####
+			Gather all the subhalos associated with black hole mergers, check if they have a required resolution, and then create a file to guide the downloading process. 
+		"""
+		print('\nStart gathering subhalos for download.')
+
+		get_subhalos_for_download_kwargs = {
+			'directory':self.directory, 
+			'skip_snaps':[53,55], 
+			'use_second_sub_back':False,
+		}
+
+		gather_subs = FindSubhalosForSearch(**get_subhalos_for_download_kwargs)
+		if gather_subs.needed:
+			gather_subs.find_subs_to_search()
+
+		print('Finished gathering subhalos for download and created file ``snaps_and_subs_needed.txt``.\n')
+
+		return
 
 
 def main():
@@ -204,6 +225,7 @@ def main():
 	main_process.gather_black_hole_information()
 	main_process.sub_partIDs_in_mergs()
 	main_process.test_good_bad_mergers()
+	main_process.get_subhalos_for_download()
 
 
 
