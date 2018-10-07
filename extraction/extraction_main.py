@@ -27,7 +27,9 @@ class MainProcess:
 			find_sublink_indices
 			gather_black_hole_information
 			sub_partIDs_in_mergs
-			find_good_bad_mergers
+			test_good_bad_mergers
+			get_subhalos_for_download
+			download_needed
 	"""
 
 	def __init__(self, directory):
