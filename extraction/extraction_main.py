@@ -13,6 +13,7 @@ from utils.sub_partIDs_in_mergs import SubPartIDs
 from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
 from utils.get_subhalos_for_download import FindSubhalosForSearch
 from utils.download_needed import DownloadNeeded
+from utils.density_vel_disp_of_subs import DensityProfVelDisp, fit_func
 
 
 class MainProcess:
@@ -239,6 +240,27 @@ class MainProcess:
 
 		return
 
+	def density_vel_disp_of_subs(self):
+		"""
+		##### Calculate Density Profiles and Stellar Velocity Dispersions #####
+			This calculates density profiles and velocity dispersions for the mergers. It gets density profiles for all particle types in remnant black hole host galaxies. Stellar velocity dispersions are calcualted for all merger-related galaxies. If a fit does not converge, the merger is no longer considered part of our catalog. 
+		"""
+		print('\nStart calculating profiles and dispersions.')
+
+		density_vel_disp_of_subs_kwargs = {
+			'directory':self.directory, 
+		}
+
+		dens_vel = DensityProfVelDisp(**density_vel_disp_of_subs_kwargs)
+		#this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
+
+		if dens_vel.needed:
+			dens_vel.fit_main()
+
+		print('Finished calculating profiles and dispersions and produced files ``density_profilesl.txt`` and ``velocity_dispersion.txt``.\n')
+
+		return
+
 
 def main():
 
@@ -257,7 +279,7 @@ def main():
 
 	args = vars(parser.parse_args())
 
-	keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'gather_black_hole_information', 'gather_black_hole_information', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed']
+	keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'gather_black_hole_information', 'gather_black_hole_information', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs']
 
 	if True not in list(args.values()) or args['all']:
 		print('Running all functions')
