@@ -3,6 +3,7 @@ This file controls the Illustris black hole extraction and filtering process.
 """
 
 import os
+import argparse
 
 from utils.prepare_sublink_trees import PrepSublink
 from utils.get_group_subs import GetGroupSubs
@@ -34,6 +35,12 @@ class MainProcess:
 
 	def __init__(self, directory):
 		self.directory = directory
+
+		try:
+			os.listdir(directory)
+
+		except FileNotFoundError:
+			os.mkdir(directory)
 
 	def sublink_extraction(self):
 		"""
@@ -235,22 +242,39 @@ class MainProcess:
 
 def main():
 
-	directory = './extraction_files/'
-	try:
-		os.listdir(directory)
+	#default is to run the whole thing
 
-	except FileNotFoundError:
-		os.mkdir(directory)
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--all", action="store_true")
+	parser.add_argument("--directory", type=str, default='./extraction_files/')
+	parser.add_argument("--sublink_extraction", action="store_true")
+	parser.add_argument("--get_group_subs", action="store_true")
+	parser.add_argument("--find_sublink_indices", action="store_true")
+	parser.add_argument("--gather_black_hole_information", action="store_true")
+	parser.add_argument("--sub_partIDs_in_mergs", action="store_true")
+	parser.add_argument("--test_good_bad_mergers", action="store_true")
+	parser.add_argument("--download_needed", action="store_true")
 
-	main_process = MainProcess(directory)
-	#main_process.sublink_extraction()
-	#main_process.get_group_subs()
-	#main_process.find_sublink_indices()
-	main_process.gather_black_hole_information()
-	main_process.sub_partIDs_in_mergs()
-	main_process.test_good_bad_mergers()
-	main_process.get_subhalos_for_download()
-	main_process.download_needed()
+	args = vars(parser.parse_args())
+
+	keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'gather_black_hole_information', 'gather_black_hole_information', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed']
+
+	if True not in list(args.values()) or args['all']:
+		print('Running all functions')
+		for key in keys:
+			args[key] = True
+
+	else:
+		for key in keys:
+			if args[key]:
+				print('Running', key)
+
+	main_process = MainProcess(args['directory'])
+	for key in keys:
+		if args[key]:
+			getattr(main_process, key)()
+
+	return
 
 
 

@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 import os
 
-from util.generalfuncs import get, download_sub
+from utils.generalfuncs import get, download_sub
 
 
 class DownloadNeeded:
