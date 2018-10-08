@@ -13,7 +13,8 @@ from utils.sub_partIDs_in_mergs import SubPartIDs
 from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
 from utils.get_subhalos_for_download import FindSubhalosForSearch
 from utils.download_needed import DownloadNeeded
-from utils.density_vel_disp_of_subs import DensityProfVelDisp, fit_func
+from utils.density_vel_disp_of_subs import DensityProfVelDisp
+from utils.create_final_data import CreateFinalDataset
 
 
 class MainProcess:
@@ -261,6 +262,27 @@ class MainProcess:
 
 		return
 
+	def create_final_data(self):
+		"""
+		##### Create Final Dataset #####
+			This gathers all of the information attained in this analysis and combines the good mergers in a final dataset. 
+		"""
+		print('\nStart generating final dataset.')
+
+		create_final_data_kwargs = {
+			'directory':self.directory, 
+		}
+
+		final_data = CreateFinalDataset(**create_final_data_kwargs)
+		#this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
+
+		if final_data.needed:
+			final_data.create_final_data()
+
+		print('Finished generating final dataset and created file ``simulation_input_data.txt``.\n')
+
+		return		
+
 
 def main():
 
@@ -276,10 +298,12 @@ def main():
 	parser.add_argument("--sub_partIDs_in_mergs", action="store_true")
 	parser.add_argument("--test_good_bad_mergers", action="store_true")
 	parser.add_argument("--download_needed", action="store_true")
+	parser.add_argument("--density_vel_disp_of_subs", action="store_true")
+	parser.add_argument("--create_final_data", action="store_true")
 
 	args = vars(parser.parse_args())
 
-	keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'gather_black_hole_information', 'gather_black_hole_information', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs']
+	keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'gather_black_hole_information', 'gather_black_hole_information', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']
 
 	if True not in list(args.values()) or args['all']:
 		print('Running all functions')
@@ -302,6 +326,4 @@ def main():
 
 
 if __name__ == '__main__':
-	############ ADD ARG PARSER TO PICK WHICH PART TO RUN ################
-
 	main()
