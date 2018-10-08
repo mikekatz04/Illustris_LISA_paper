@@ -4,6 +4,7 @@ MAIN PURPOSE: create the final dataset of information after all of these analyse
 
 import numpy as np 
 import h5py 
+import os
 
 h = 0.704
 
@@ -38,7 +39,7 @@ class CreateFinalDataset:
 		Get info for bhs from all bhs catalog. 
 		"""
 
-		with h5py.File('bhs_all_new.hdf5', 'r') as bh_all:
+		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'r') as bh_all:
 			bh_all_partids = bh_all['ParticleIDs_new'][:]
 			bh_all_snapshots = bh_all['Snapshot'][:]
 			bh_all_hsml = bh_all['BH_Hsml'][:]
@@ -46,12 +47,12 @@ class CreateFinalDataset:
 
 		return bh_all_partids, bh_all_snapshots, bh_all_hsml, bh_all_coordinates
 
-	def gather_info_from_mergers(self):
+	def gather_info_from_mergers(self, uni_mergers):
 		"""
 		Get info on mergers.
 		"""
 
-		with h5py.File('bhs_mergers_new.hdf5', 'r') as mergers:
+		with h5py.File(self.directory + 'bhs_mergers_new.hdf5', 'r') as mergers:
 			mass_in = mergers['mass_in_new'][:][uni_mergers]*1e10/h
 			mass_out = mergers['mass_out_new'][:][uni_mergers]*1e10/h
 
@@ -69,7 +70,7 @@ class CreateFinalDataset:
 		Get info for subs that have the bhs.
 		"""
 
-		with h5py.File('subs_with_bhs.hdf5', 'r') as gc:
+		with h5py.File(self.directory + 'subs_with_bhs.hdf5', 'r') as gc:
 			gc_subs = gc['SubhaloID'][:]
 			gc_snaps = gc['Snapshot'][:]
 			gc_SubhaloMassType = gc['SubhaloMassType'][:]
@@ -82,10 +83,10 @@ class CreateFinalDataset:
 		Get stellar velocity dispersions and density profiles.
 		"""
 
-		velocity_dispersions = np.genfromtxt('velocity_dispersions.txt', names=True, dtype=None)
+		velocity_dispersions = np.genfromtxt(self.directory + 'velocity_dispersions.txt', names=True, dtype=None)
 
 		#use the density profiles dataset to determine the final good mergers
-		good_mergers = np.genfromtxt('density_profiles.txt', names=True, dtype=None)
+		good_mergers = np.genfromtxt(self.directory + 'density_profiles.txt', names=True, dtype=None)
 
 		return velocity_dispersions, good_mergers
 
@@ -94,9 +95,6 @@ class CreateFinalDataset:
 		Gather all data and write it out to a dataset.
 		"""
 
-		bh_all_partids, bh_all_snapshots, bh_all_hsml, bh_all_coordinates = self.gather_info_from_all_bhs()
-		mass_in, mass_out, id_in, id_out, scale, redshift, snapshots = self.gather_info_from_mergers()
-		gc_subs, gc_snaps, gc_SubhaloMassType, gc_SubhaloVelDisp = self.gather_info_from_subs_with_bhs()
 		velocity_dispersions, good_mergers = self.gather_density_profiles_and_vel_disps()
 
 		#all the unique mergers appearing in the density profiles
@@ -104,6 +102,10 @@ class CreateFinalDataset:
 
 		#unique mergers in velocity dispersions which is the same as in density profiles. Also, get the indices of each unique entry
 		uni_vel, uni_vel_ind = np.unique(velocity_dispersions['m'], return_index=True)
+
+		bh_all_partids, bh_all_snapshots, bh_all_hsml, bh_all_coordinates = self.gather_info_from_all_bhs()
+		mass_in, mass_out, id_in, id_out, scale, redshift, snapshots = self.gather_info_from_mergers(uni_mergers)
+		gc_subs, gc_snaps, gc_SubhaloMassType, gc_SubhaloVelDisp = self.gather_info_from_subs_with_bhs()
 
 		#initialize lists for all the parameters we want to read out
 		subs_out = []
@@ -229,7 +231,7 @@ class CreateFinalDataset:
 			out_list.append([merger_ind_out[i]] + snaps_out[i] + subs_out[i] + ids_out[i] + masses_out[i] + [redshift_out[i]] + [separation_out[i]] + coordinates_out[i] + density_profiles_out[i] + vel_disps_out[i] + stellar_mass_out[i] + total_mass_out[i])
 
 		#write out data
-		with open('data_ready_june_snap_lim_%i.txt'%snapshot_cut, 'w') as f:
+		with open(self.directory + 'simulation_input_data.txt', 'w') as f:
 			f.write('merger\tsnap_prev_in\tsnapshot_prev_out\tsnapshot_fin_out\tsubhalo_prev_in\tsubhalo_prev_out\tsubhalo_fin_out\tid_new_prev_in\tid_new_prev_out\tid_new_fin_out\tmass_new_prev_in\tmass_new_prev_out\tmass_new_fin_out\tredshift\tseparation\tcoordinates_x\tcoordinates_y\tcoordinates_z\tstar_gamma\tgas_gamma\tdm_gamma\tvel_disp_prev_in\tvel_disp_prev_out\tvel_disp_fin_out\tstellar_mass_prev_in\tstellar_mass_prev_out\tstellar_mass_fin_out\ttotal_mass_prev_in\ttotal_mass_prev_out\ttotal_mass_fin_out\n')
 
 			#this ensures each data point is recorded with right dtype
