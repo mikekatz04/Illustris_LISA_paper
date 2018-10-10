@@ -54,12 +54,12 @@ class AnalyticApproximations:
 		
 		return velocity_dispersion
 
-	def influence_radius(M_p,z):
+	def influence_radius(M_p,vel_disp):
 
 		#inf_radius=G*M_p/(velocity_dispersion(M_p,z)**2)
-		inf_radius=35.*(M_p/1.E+8)**(0.56)
+		#inf_radius=35.*(M_p/1.E+8)**(0.56)
 		#inf_radius=13.*(M_p/1.e8)/(velocity_dispersion(M_p,z)/200.)**2
-		
+		inf_radius = 10.8*(M_p/1e8)*(vel_disp/200.0)**-2 # Eq 3b in Merritt et al 2009
 		return inf_radius
 
 	"""

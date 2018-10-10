@@ -12,7 +12,7 @@ from utils.mbhbinaries import mass_ratio_func, MassiveBlackHoleBinaries, Analyti
 class EvolveFDFA(MassiveBlackHoleBinaries):
 		#put all quantities into arrays to determine which is major galaxy and minor galaxy'
 
-	def __init__(self,m1, m2, vel_disp_1,  vel_disp_2, gamma, separation, z, e_0=0.0):
+	def __init__(self,m1, m2, vel_disp_1,  vel_disp_2, star_gamma, separation, z, e_0=0.0):
 
 		self.z = z
 		#find index of major and minor
@@ -29,10 +29,10 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 		self.vel_disp_s = vel_disp_1*major_2 + vel_disp_2*major_1
 
 		#find large scale orbital decay time
-		self.gamma = np.clip(gamma, 0.55, 2.49)
+		self.gamma = np.clip(star_gamma, 0.55, 2.49)
 
 		##r_infl determined analytically
-		self.r_infl = AnalyticApproximations.influence_radius(self.M, self.z)
+		self.r_infl = AnalyticApproximations.influence_radius(self.M, self.vel_disp_m)
 
 		self.R_e_m = separation
 
@@ -151,11 +151,10 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 	def FD_FA_Dynamical_Friction_timescale(self):
 		#a_crit = find_a_crit(r_infl, m, M, gamma)	
 		#chi = a_crit/r_infl
+		#self.find_a_h()
+		#self.chi = self.a_h/self.r_infl
+		self.find_chi()
 
-		self.find_a_h()
-
-		self.chi = self.a_h/self.r_infl
-		
 		self.ksi = 1.
 		self.alpha_func()
 		#alpha = alpha_interp_func(gamma)
@@ -167,6 +166,7 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 		#delta = delta_interp_func(gamma)
 
 		out = np.asarray([self.T_dot_bare(), self.T_dot_gx()]).T
+
 		self.DF_timescale = np.min(out, axis=1)
 		return
 
@@ -197,6 +197,10 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 		T_h_GW = 1.7e8 * (self.r_infl/30.)**((10 + 4*psi)/(5 + psi)) * ((self.M+self.m)/1e8)**((-5-3*psi)/(5+psi)) * phi**(-4/(5+psi)) * (4*self.q/(1+self.q)**2)**((3*psi - 1)/(5 + psi))* f_e**((1+psi)/(5+psi)) * 20**psi #years
 
 		self.Hardening_GW_timescale = T_h_GW*(self.q>=1e-3) + 0.0*(self.q<1e-3)
+		return
+
+	def find_chi(self):
+		self.chi = 0.25*(self.q/(1.+self.q)) #combines equation 3b from Merritt et al 2009 and hardening timescale from merritt 2013
 		return
 
 	def find_a_h(self):
