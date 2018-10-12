@@ -69,11 +69,11 @@ class SubPartIDs:
 		Use `get` to download the original black hole merger file from the Illustris website.
 		"""
 
-		if 'blackhole_mergers-ILL%i.hdf5'%self.ill_run in os.listdir(self.directory):
-			print('blackhole_mergers-ILL%i.hdf5 already downloaded.'%self.ill_run)
+		if 'blackhole_mergers.hdf5'%self.ill_run in os.listdir(self.directory):
+			print('blackhole_mergers.hdf5 already downloaded.'%self.ill_run)
 			return
 
-		print('blackhole_mergers-ILL%i.hdf5 -> beginning download.'%self.ill_run)
+		print('blackhole_mergers.hdf5 -> beginning download.'%self.ill_run)
 
 		fp = get('http://www.illustris-project.org/api/Illustris-%i/files/blackhole_mergers.hdf5'%self.ill_run)
 

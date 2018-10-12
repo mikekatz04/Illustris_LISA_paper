@@ -28,11 +28,13 @@ class MainProcess:
 			sublink_extraction
 			get_group_subs
 			find_sublink_indices
-			gather_black_hole_information
+			find_bhs
 			sub_partIDs_in_mergs
 			test_good_bad_mergers
 			get_subhalos_for_download
 			download_needed
+			density_vel_disp_of_subs
+			create_final_data
 	"""
 
 	def __init__(self, directory):
@@ -69,7 +71,7 @@ class MainProcess:
 	def get_group_subs(self):
 		"""
 		###### Group Catalog Information #####
-		Get group catalog information for all the subhalos with black holes in them. Code is designed to download from Illustris server, at snapshot intervals. It picks back up where it left off if the download times out. 
+		Get group catalog information for all the subhalos with black holes in them. Code is designed to download from Illustris server, at snapshot intervals. It picks back up where it left off if the download times out. Returns ``subs_with_bhs.hdf5``
 		"""
 
 		print('\nStart group catalog extraction for subhalos with black holes.')
@@ -112,14 +114,14 @@ class MainProcess:
 
 		return
 
-	def gather_black_hole_information(self):
+	def find_bhs(self):
 		"""
 		##### Gather All Black Hole Particle Info #####
 			Find all the black holes at each snapshot, gather there particle information and write them to a file ``bhs_all_new.hdf5``. This is performed by downloading snapshot chunks and group catalog chunks to efficiently search subhalos with bhs and match black hole particle IDs to there corresponding host galaxy. 
 		"""
 		print('\nStart finding all bhs particle information.')
 
-		gather_black_hole_information_kwargs = {
+		find_bhs_kwargs = {
 			'ill_run':3, 
 			'directory':self.directory, 
 			'num_chunk_files_per_snapshot':512, 
@@ -129,10 +131,10 @@ class MainProcess:
 			'max_snap':135
 		}
 
-		find_bhs = LocateBHs(**gather_black_hole_information_kwargs)
-		if find_bhs.needed:
-			find_bhs.download_bhs_all_snapshots()
-			find_bhs.combine_black_hole_files()
+		get_bhs = LocateBHs(**find_bhs_kwargs)
+		if get_bhs.needed:
+			get_bhs.download_bhs_all_snapshots()
+			get_bhs.combine_black_hole_files()
 
 
 		print('Finished finding black hole particle information and created ``bhs_all_new.hdf5`` file.\n')
@@ -174,9 +176,11 @@ class MainProcess:
 	def test_good_bad_mergers(self):
 		"""
 		##### Find Good/Bad Mergers #####
-			First: we find all bad black holes resulting from fly-by encounters of host galaxies. Bad black holes are spawned by a host galaxy after it loses its original black hole in the fly-by encounter. See the documentation for `find_bad_black_holes.py` for information on this procedure. This procedure is the key step to accessing the near-seed mass black holes. 
+			First: we find all bad black holes resulting from fly-by encounters of host galaxies. Bad black holes are spawned by a host galaxy after it loses its original black hole in the fly-by encounter. See the documentation for `test_good_bad_mergers.py` for information on this procedure. This procedure is the key step to accessing the near-seed mass black holes. 
 
-			Second: combine these black holes with bhs that exist for less than two snapshots and have masses less than 10^6. This then produces the ``good_mergers.txt`` file detailed the good mergers by black hole standards. 
+			Second: black holes that exist for less than two snapshots and have masses less than 10^6 are also considered bad black holes.
+
+			Afte these two steps, the filtered set of good mergers is output to ``good_mergers.txt`` file detailing the good mergers by black hole standards. 
 		"""
 		print('\nStart finding good/bad mergers.')
 
@@ -294,7 +298,7 @@ def main():
 	parser.add_argument("--sublink_extraction", action="store_true")
 	parser.add_argument("--get_group_subs", action="store_true")
 	parser.add_argument("--find_sublink_indices", action="store_true")
-	parser.add_argument("--gather_black_hole_information", action="store_true")
+	parser.add_argument("--find_bhs", action="store_true")
 	parser.add_argument("--sub_partIDs_in_mergs", action="store_true")
 	parser.add_argument("--test_good_bad_mergers", action="store_true")
 	parser.add_argument("--download_needed", action="store_true")
@@ -303,7 +307,7 @@ def main():
 
 	args = vars(parser.parse_args())
 
-	keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'gather_black_hole_information', 'gather_black_hole_information', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']
+	keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'gather_black_hole_information', 'find_bhs', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']
 
 	if True not in list(args.values()) or args['all']:
 		print('Running all functions')

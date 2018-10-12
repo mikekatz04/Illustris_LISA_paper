@@ -1,17 +1,21 @@
 """
 MAIN PURPOSE: determine which mergers are good and bad. 
+
+	test_good_bad_mergers.py is used to determine if the merger is good or bad in terms of its black holes. The criteria to be a bad merger is the following:
+
+		1) Either constituent black hole respawned after a fly-by encounter of its host galaxy lost the host galaxy's original black hole. This is caught by FindBadBlackHoles class and recorded in ``bad_black_holes.txt``. (This applies to all black holes regardless of mass. However, these are expected to be near seed mass.) 
+		2) Either constituent exists in the simulation for 1 or less snapshots. This only applies to black holes less than 10^6. The algorithms used here are not perfect and can let a few of these slip by. Therefore, if a black hole is larger than 10^6, it is considered good no matter how long its ParticleID has existed. (We assume if it is larger than 10^6, it has been around longer than 2 snapshots.) 
 """
 
 import os
 import h5py 
 import numpy as np
 
+
+
 class TestGoodBadMergers:
 	"""
-	TestGoodBadMergers is used to determine if the merger is good or bad in terms of its black holes. The criteria to be a bad merger is the following:
-
-		1) Either constituent black hole respawned in a fly-by encounter of its host galaxy. This is caught by FindBadBlackHoles class and recorded in ``bad_black_holes.txt``. 
-		2) Either constituent exists in the simulation for 1 or less snapshots. (This only applies to black holes greater than 10^6. The algorithms used here are not perfect and can let a few of these slip by.)
+		TestGoodBadMergers tests whether either constituent exists in the simulation for 1 or less snapshots. This only applies to black holes less than 10^6. The algorithms used here are not perfect and can let a few of these slip by. Therefore, if a black hole is larger than 10^6, it is considered good no matter how long its ParticleID has existed. (We assume if it is larger than 10^6, it has been around longer than 2 snapshots.) 
 
 		attributes:
 			:param	directory - (str) - directory to work in

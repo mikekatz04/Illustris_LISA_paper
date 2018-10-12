@@ -13,7 +13,7 @@ from utils.basicmergers import MagicMergers
 from utils.resample import KDEResample, GenerateCatalog
 from utils.parallelsnr import ParallelSNR, parallel_snr_func
 
-def detection_rate_main(num_catalogs, t_obs, duration, fp, evolve_key_guide, kde_key_guide, evolve_class, merger_rate_kwargs, parallel_kwargs, only_detectable=False, snr_threshold=8.0):
+def detection_rate_main(num_catalogs, t_obs, duration, fp, evolve_key_guide, kde_key_guide, evolve_class, merger_rate_kwargs, parallel_kwargs, snr_kwargs, only_detectable=False, snr_threshold=8.0):
 
 	begin_time = time.time()
 
@@ -70,7 +70,7 @@ def detection_rate_main(num_catalogs, t_obs, duration, fp, evolve_key_guide, kde
 	st = gc.t_event
 	et = 0.0*((st - t_obs) < 0.0) + (st - t_obs)*((st - t_obs) >= 0.0)
 
-	para = ParallelSNR(gc.m1, gc.m2, gc.z_coal, st, et, chi=0.8, snr_kwargs={'wd_noise':True, 'num_points':2048, 'sensitivity_curve':'LPA', 'prefactor':np.sqrt(16./5.)})
+	para = ParallelSNR(gc.m1, gc.m2, gc.z_coal, st, et, chi=0.8, snr_kwargs=snr_kwargs)
 
 	para.prep_parallel(**parallel_kwargs)
 	snr = para.run_parallel(timer=True)
@@ -112,9 +112,11 @@ if __name__ == "__main__":
 
 	merger_rate_kwargs = {'Vc':106.5**3, 'dz':0.001, 'zmax':10.0}
 
+	snr_kwargs = {'wd_noise':True, 'num_points':2048, 'sensitivity_curve':'LPA', 'prefactor':np.sqrt(16./5.)}
+
 	parallel_kwargs = {'num_processors':None, 'num_splits':1000, 'verbose':10}
 
-	check = detection_rate_main(num_catalogs, t_obs, duration, fp, evolve_key_guide, kde_key_guide, evolve_class, merger_rate_kwargs, parallel_kwargs, only_detectable=False, snr_threshold=8.0)
+	check = detection_rate_main(num_catalogs, t_obs, duration, fp, evolve_key_guide, kde_key_guide, evolve_class, merger_rate_kwargs, parallel_kwargs, snr_kwargs, only_detectable=False, snr_threshold=8.0)
 	import pdb
 	pdb.set_trace()
 
