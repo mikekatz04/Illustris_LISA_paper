@@ -2,8 +2,8 @@
 MAIN PURPOSE: create the final dataset of information after all of these analyses
 """
 
-import numpy as np 
-import h5py 
+import numpy as np
+import h5py
 import os
 
 h = 0.704
@@ -11,7 +11,7 @@ h = 0.704
 
 class CreateFinalDataset:
 	"""
-	CreateFinalDataset gathers all of the data from the entire analysis and combines it into a single output file. This includes only the good mergers. 
+	CreateFinalDataset gathers all of the data from the entire analysis and combines it into a single output file. This includes only the good mergers.
 
 		attributes:
 			:param  directory - (str) - directory to work in
@@ -36,7 +36,7 @@ class CreateFinalDataset:
 
 	def gather_info_from_all_bhs(self):
 		"""
-		Get info for bhs from all bhs catalog. 
+		Get info for bhs from all bhs catalog.
 		"""
 
 		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'r') as bh_all:
@@ -60,7 +60,7 @@ class CreateFinalDataset:
 			id_out = mergers['id_out_new'][:][uni_mergers]
 
 			scale = mergers['time'][:][uni_mergers]
-			redshift = 1./scale -1.
+			redshift = 1./scale - 1.
 			snapshots = mergers['snapshot'][:][uni_mergers]
 
 		return mass_in, mass_out, id_in, id_out, scale, redshift, snapshots
@@ -122,7 +122,7 @@ class CreateFinalDataset:
 		redshift_out = []
 		coordinates_out = []
 
-		# make a cut based on snapshots lived by black hole. We already made this cut in previous analysis. This is here in case the user wants a longer cut or to ensure this cut is correct. 
+		# make a cut based on snapshots lived by black hole. We already made this cut in previous analysis. This is here in case the user wants a longer cut or to ensure this cut is correct.
 		snapshot_cut = 1
 
 		# run through the mergers and gather all the output information
@@ -178,7 +178,7 @@ class CreateFinalDataset:
 
 			redshift_out.append(redshift[j])
 
-			# the following quantities will be added in groups of three (one for each constituent and remnant black hole). We create _trans lists to be a group of 3. We then add them to an overall list. 
+			# the following quantities will be added in groups of three (one for each constituent and remnant black hole). We create _trans lists to be a group of 3. We then add them to an overall list.
 			subs_trans = []
 			snaps_trans = []
 
@@ -222,7 +222,7 @@ class CreateFinalDataset:
 			stellar_mass_out.append(stellar_mass_trans)
 			total_mass_out.append(total_mass_trans)
 
-			if j%100==0:
+			if j % 100 == 0:
 				print(j)
 
 		out_list = []
@@ -241,6 +241,3 @@ class CreateFinalDataset:
 				f.write('\n')
 
 		return
-
-
-
