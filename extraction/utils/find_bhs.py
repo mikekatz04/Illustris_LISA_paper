@@ -113,7 +113,7 @@ class LocateBHs:
 		"""
 
 		for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
-			if snap in skip_snaps:
+			if snap in self.skip_snaps:
 				print('Skipped snapshot', snap)
 
 			if '%i_blackholes.hdf5' % snap in os.listdir(self.directory):
@@ -195,10 +195,10 @@ class LocateBHs:
 
 			# need length to fill values for subhalo and snapshot
 			length = len(check_bhs_in_sub['ParticleIDs'][:])
-			self.bhs_dict['Subhalo']['values'].append(np.full((length, ), j, dtype=int))
+			self.bhs_dict['Subhalo']['values'].append(np.full((length, ), sub, dtype=int))
 			self.bhs_dict['Snapshot']['values'].append(np.full((length, ), snap, dtype=int))
 
-			for name in bhs_dict:
+			for name in self.bhs_dict:
 				if name == 'Subhalo' or name == 'Snapshot':
 					continue
 				self.bhs_dict[name]['values'].append(check_bhs_in_sub[name])
@@ -247,6 +247,7 @@ class LocateBHs:
 
 		# reset the dict so it is ready to populate
 		self.reset_black_holes_dict()
+		bhs_dict = self.bhs_dict
 
 		# open snapshot specific files and populate dict
 		for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
@@ -273,7 +274,7 @@ class LocateBHs:
 		self.delete_snap_bh_files()
 		return
 
-	def delet_snap_bh_files():
+	def delet_snap_bh_files(self):
 		"""
 		Delete the snapshot specific bh files to conserve memory.
 		"""
