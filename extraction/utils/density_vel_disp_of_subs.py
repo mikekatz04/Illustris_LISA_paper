@@ -2,24 +2,26 @@
 MAIN PURPOSE: calculated density profiles and velocity dispersion for merger host galaxies
 """
 
-import numpy as np 
+import numpy as np
 import h5py
 import os
 from scipy.optimize import curve_fit
 
-h=0.704
+h = 0.704
 
-def fit_func(x,a,b):
+
+def fit_func(x, a, b):
 	"""
 	Power law fit for the density profile
 	"""
 	return a*x**-b
 
+
 class DensityProfVelDisp:
 	"""
-	DensityProfVelDisp calculates density profiles and velocity dispersions for the mergers. It gets density profiles for all particle types in remnant black hole host galaxies. Stellar velocity dispersions are calcualted for all merger-related galaxies. If a fit does not converge, the merger is no longer considered part of our catalog. 
+	DensityProfVelDisp calculates density profiles and velocity dispersions for the mergers. It gets density profiles for all particle types in remnant black hole host galaxies. Stellar velocity dispersions are calcualted for all merger-related galaxies. If a fit does not converge, the merger is no longer considered part of our catalog.
 
-		Note: when downloading all the subhalos, some downloads may not have been perfect meaning the files will not open. This should be a very small number. If this is the case, the code will error and stop running. you can see the last subhalo that the code tried to open. Use `download_single.py` for these files. 
+		Note: when downloading all the subhalos, some downloads may not have been perfect meaning the files will not open. This should be a very small number. If this is the case, the code will error and stop running. you can see the last subhalo that the code tried to open. Use `download_single.py` for these files.
 
 		attributes:
 			:param directory - (str) - directory to work in
@@ -41,17 +43,16 @@ class DensityProfVelDisp:
 		else:
 			self.needed = True
 
-
 	def find_fit(self, coordinates, masses, sub_cm, scale):
 		"""
 		Function used to determine fit. Used for all particle types.
 		"""
 
 		# radius from CoM
-		radius = np.sqrt(np.sum((coordinates - sub_cm)**2, axis=1))*scale*1e3 # comoving to physical -- kpc to pc
+		radius = np.sqrt(np.sum((coordinates - sub_cm)**2, axis=1))*scale*1e3   # comoving to physical -- kpc to pc
 
 		# put in structured array for sorting
-		all_particles = np.core.records.fromarrays([radius, masses], dtype=[('rad', np.dtype(float)),('mass', np.dtype(float))])
+		all_particles = np.core.records.fromarrays([radius, masses], dtype=[('rad', np.dtype(float)), ('mass', np.dtype(float))])
 
 		all_particles = np.sort(all_particles, order=('rad',))
 
@@ -63,7 +64,7 @@ class DensityProfVelDisp:
 
 		# make sure there are at least 8 bins with 4 or more particles in them.
 		try:
-			inds_bins = np.where(bin_count>=4)[0][0:8]
+			inds_bins = np.where(bin_count >= 4)[0][0:8]
 		except IndexError:
 			run_vel_disp = False
 			return [], run_vel_disp
@@ -124,27 +125,26 @@ class DensityProfVelDisp:
 		# get other information needed
 		merger_time = self.gather_info_from_mergers()
 		subs_gc, snaps_gc, subhalo_cm_gc = self.gather_info_from_subs_with_bhs()
-		
 
 		vel_disp_out = []
 		density_profile_out = []
 
 		# this figures out the remnant host halo. Order in ``snaps_and_subs_needed.txt`` is 3,2,1
-		uni_mergers, uni_index = np.unique(subs_downloaded[:,0], return_index=True)
+		uni_mergers, uni_index = np.unique(subs_downloaded[:, 0], return_index=True)
 
 		# bin selection arbitrary but did not affect results much
-		bins = 100
+		# bins = 100
 		print(len(uni_index), 'to go through')
 
-		# idea is to only get velocity dispersion of other subhalos if main halo can get the fit. 
+		# idea is to only get velocity dispersion of other subhalos if main halo can get the fit.
 		# if fit does not work , the merger is not considered
 		for num, m_start_ind in enumerate(uni_index):
 			run_vel_disp = True
 
 			# this scrolls through the three subhalos per merger
 			for index in np.arange(m_start_ind, m_start_ind+3)[::-1]:
-				
-				if run_vel_disp ==False:
+
+				if run_vel_disp == False:
 					continue
 
 				# extract galaxy info
@@ -158,7 +158,7 @@ class DensityProfVelDisp:
 				# final, prev_in, or prev_out
 				which = row[1]
 				print(snap, sub, num)
-				if which == 3: 
+				if which == 3:
 					# scale factor
 					scale = merger_time[m]
 
@@ -166,10 +166,10 @@ class DensityProfVelDisp:
 
 					# center of mass of galaxy
 					sub_cm = subhalo_cm_gc[ind]
-			
-					with h5py.File('%i/%i_sub_cutouts/cutout_%i_%i.hdf5'%(snap, snap, snap, sub), 'r') as f:
-					# for local testing
-					# with h5py.File('cutout_%i_%i.hdf5'%(snap, sub), 'r') as f:
+
+					with h5py.File('%i/%i_sub_cutouts/cutout_%i_%i.hdf5' % (snap, snap, snap, sub), 'r') as f:
+						# for local testing
+						# with h5py.File('cutout_%i_%i.hdf5'%(snap, sub), 'r') as f:
 
 						# stars firts #
 						stars = f['PartType4']
@@ -229,7 +229,7 @@ class DensityProfVelDisp:
 
 						try:
 							# dm particles all have the same mass
-							var, run_vel_disp = self.find_fit(dm['Coordinates'][:], np.full((len(dm['Coordinates'][:]),),6.3e6), sub_cm, scale)
+							var, run_vel_disp = self.find_fit(dm['Coordinates'][:], np.full((len(dm['Coordinates'][:]),), 6.3e6), sub_cm, scale)
 							if run_vel_disp == False:
 								continue
 
@@ -248,9 +248,9 @@ class DensityProfVelDisp:
 				else:
 					# get only velocity dispersion for constituent halos
 					if run_vel_disp:
-						with h5py.File('%i/%i_sub_cutouts/cutout_%i_%i.hdf5'%(snap, snap, snap, sub), 'r') as f:
-						# for testing in local directories
-						# with h5py.File('cutout_%i_%i.hdf5'%(snap, sub), 'r') as f:
+						with h5py.File('%i/%i_sub_cutouts/cutout_%i_%i.hdf5' % (snap, snap, snap, sub), 'r') as f:
+							# for testing in local directories
+							# with h5py.File('cutout_%i_%i.hdf5'%(snap, sub), 'r') as f:
 							vel_disp_out.append([m, which, snap, sub, np.std(np.sqrt(np.sum(f['PartType4']['Velocities'][:]**2, axis=1)))])
 
 		# prep all the lists for read out and read out to files #
@@ -260,19 +260,13 @@ class DensityProfVelDisp:
 
 		density_profile_out = [density_profile_out[i] for i in range(len(density_profile_out))]
 		vel_disp_out = [vel_disp_out[i] for i in range(len(vel_disp_out))]
-				
-		density_profile_out = np.core.records.fromarrays(density_profile_out, dtype=[('merger', np.dtype(int)),('which', np.dtype(int)),('snap', np.dtype(int)),('sub', np.dtype(int)),('star_gamma', np.dtype(float)), ('gas_gamma', np.dtype(float)), ('dm_gamma', np.dtype(float))])
 
-		np.savetxt('density_profiles.txt', density_profile_out, fmt='%i\t%i\t%i\t%i\t%.18e\t%.18e\t%.18e', header = 'm\twhich\tsnap\tsub\tstar_gamma\tgas_gamma\tdm_gamma')
+		density_profile_out = np.core.records.fromarrays(density_profile_out, dtype=[('merger', np.dtype(int)), ('which', np.dtype(int)), ('snap', np.dtype(int)), ('sub', np.dtype(int)), ('star_gamma', np.dtype(float)), ('gas_gamma', np.dtype(float)), ('dm_gamma', np.dtype(float))])
 
-		vel_disp_out = np.core.records.fromarrays(vel_disp_out, dtype=[('merger', np.dtype(int)),('which', np.dtype(int)),('snap', np.dtype(int)),('sub', np.dtype(int)),('vel_disp', np.dtype(float))])
+		np.savetxt('density_profiles.txt', density_profile_out, fmt='%i\t%i\t%i\t%i\t%.18e\t%.18e\t%.18e', header='m\twhich\tsnap\tsub\tstar_gamma\tgas_gamma\tdm_gamma')
 
-		np.savetxt('velocity_dispersions.txt', vel_disp_out, fmt='%i\t%i\t%i\t%i\t%.18e', header = 'm\twhich\tsnap\tsub\tvel_disp')
+		vel_disp_out = np.core.records.fromarrays(vel_disp_out, dtype=[('merger', np.dtype(int)), ('which', np.dtype(int)), ('snap', np.dtype(int)), ('sub', np.dtype(int)), ('vel_disp', np.dtype(float))])
+
+		np.savetxt('velocity_dispersions.txt', vel_disp_out, fmt='%i\t%i\t%i\t%i\t%.18e', header='m\twhich\tsnap\tsub\tvel_disp')
 
 		return
-
-
-
-
-
-

@@ -1,21 +1,20 @@
 """
-MAIN PURPOSE: determine which mergers are good and bad. 
+MAIN PURPOSE: determine which mergers are good and bad.
 
 	test_good_bad_mergers.py is used to determine if the merger is good or bad in terms of its black holes. The criteria to be a bad merger is the following:
 
-		1) Either constituent black hole respawned after a fly-by encounter of its host galaxy lost the host galaxy's original black hole. This is caught by FindBadBlackHoles class and recorded in ``bad_black_holes.txt``. (This applies to all black holes regardless of mass. However, these are expected to be near seed mass.) 
-		2) Either constituent exists in the simulation for 1 or less snapshots. This only applies to black holes less than 10^6. The algorithms used here are not perfect and can let a few of these slip by. Therefore, if a black hole is larger than 10^6, it is considered good no matter how long its ParticleID has existed. (We assume if it is larger than 10^6, it has been around longer than 2 snapshots.) 
+		1) Either constituent black hole respawned after a fly-by encounter of its host galaxy lost the host galaxy's original black hole. This is caught by FindBadBlackHoles class and recorded in ``bad_black_holes.txt``. (This applies to all black holes regardless of mass. However, these are expected to be near seed mass.)
+		2) Either constituent exists in the simulation for 1 or less snapshots. This only applies to black holes less than 10^6. The algorithms used here are not perfect and can let a few of these slip by. Therefore, if a black hole is larger than 10^6, it is considered good no matter how long its ParticleID has existed. (We assume if it is larger than 10^6, it has been around longer than 2 snapshots.)
 """
 
 import os
-import h5py 
+import h5py
 import numpy as np
-
 
 
 class TestGoodBadMergers:
 	"""
-		TestGoodBadMergers tests whether either constituent exists in the simulation for 1 or less snapshots. This only applies to black holes less than 10^6. The algorithms used here are not perfect and can let a few of these slip by. Therefore, if a black hole is larger than 10^6, it is considered good no matter how long its ParticleID has existed. (We assume if it is larger than 10^6, it has been around longer than 2 snapshots.) 
+		TestGoodBadMergers tests whether either constituent exists in the simulation for 1 or less snapshots. This only applies to black holes less than 10^6. The algorithms used here are not perfect and can let a few of these slip by. Therefore, if a black hole is larger than 10^6, it is considered good no matter how long its ParticleID has existed. (We assume if it is larger than 10^6, it has been around longer than 2 snapshots.)
 
 		attributes:
 			:param	directory - (str) - directory to work in
@@ -47,18 +46,16 @@ class TestGoodBadMergers:
 			unique_part_ids_all, index, counts = np.unique(f['ParticleIDs_new'][:][::-1], return_counts=True, return_index=True)
 
 			# REMOVING ALL BLACK HOLES THAT ONLY APPEAR FOR ONE SNAPSHOT IN THE FULL BH-ALL DATASET and that have mass less than 10^6. (The merger switch algoritm is not perfect, so we cut out any issues below 10^6) #
-			bad_add = np.where((counts == 1) &(f['BH_Mass'][:][::-1][index] > 1e6))[0]
+			bad_add = np.where((counts == 1) & (f['BH_Mass'][:][::-1][index] > 1e6))[0]
 
-		# read in bad black holes 
+		# read in bad black holes
 		bad_arr = np.genfromtxt('bad_black_holes.txt', dtype=None)
 
-		bad_ids = bad_arr[:,0].astype(np.uint64)
+		bad_ids = bad_arr[:, 0].astype(np.uint64)
 
 		# combine the black holes from the fly-by/descendant search with black holes that exist less than 1 snapshot (less than 10^6)
 		bad_ids = np.unique(np.concatenate([bad_ids, unique_part_ids_all[bad_add]]))
 
-
-		
 		# GOOD MERGER IF THE BOTH CONSTITUENT BLACKHOLES APPEAR MORE THAN ONE TIME IN THE ''ALL'' DATASET, AND ARE NOT CAUGHT IN `find_bad_black_holes.py` to be rebirthed #
 		good = []
 
@@ -71,9 +68,9 @@ class TestGoodBadMergers:
 			id_out_new = f_merg['id_out_new']
 
 		print('find good/bad')
-		for m in range(len(time)): 
+		for m in range(len(time)):
 
-			# if both masses are above 10^6, we keep it       
+			# if both masses are above 10^6, we keep it
 			if mass_in_new[m] >= 1e6 and mass_out_new[m] >= 1e6:
 				good.append(m)
 				continue
@@ -92,11 +89,11 @@ class TestGoodBadMergers:
 
 class FindBadBlackHoles:
 	"""
-	FindBadBlackHoles walks down trees in the sublink trees locating bad black holes. This is the key aspect to the more in-depth analysis to access the near-seed mass black holes. What we mean by bad black holes is the following: when a subhalo loses its black hole in a fly-by encounter and subsequently spawns a new black hole, the spawned black hole is considered bad. 
+	FindBadBlackHoles walks down trees in the sublink trees locating bad black holes. This is the key aspect to the more in-depth analysis to access the near-seed mass black holes. What we mean by bad black holes is the following: when a subhalo loses its black hole in a fly-by encounter and subsequently spawns a new black hole, the spawned black hole is considered bad.
 
 		List of the steps we take to do this (this is after we have filtered for black holes that stop existing at snapshots earlier than the last snapshot):
 
-		step 1: start at the subhalo where a black hole is about to cease to exist. Its first descendant will either be the galaxy it has merged into, or it will remain on its own except without a black hole. 
+		step 1: start at the subhalo where a black hole is about to cease to exist. Its first descendant will either be the galaxy it has merged into, or it will remain on its own except without a black hole.
 
 		step 2: iterate down the descendant tree until the descendant index is -1
 
@@ -104,11 +101,11 @@ class FindBadBlackHoles:
 
 		step 3: find if a subhalo we are looking at has a black hole
 
-		step 4: if it has a black hole, check if this black hole's first snapshot (i.e. its formation snapshot) is the same as the snapshot of the current descendant in the tree. 
+		step 4: if it has a black hole, check if this black hole's first snapshot (i.e. its formation snapshot) is the same as the snapshot of the current descendant in the tree.
 
-			- If True: this means the black hole formed into the subhhalo that lost its black hole (making it a bad black hole). 
+			- If True: this means the black hole formed into the subhhalo that lost its black hole (making it a bad black hole).
 
-			- If False: it is not he same as the formation snapshot, that means the subhalo we are looking at merged into another subhalo with a black hole that had existed at previous snapshots. 
+			- If False: it is not he same as the formation snapshot, that means the subhalo we are looking at merged into another subhalo with a black hole that had existed at previous snapshots.
 
 		step 5: add bad black holes to list and read out the data
 
@@ -134,7 +131,7 @@ class FindBadBlackHoles:
 
 	def get_subs_from_all_bhs(self):
 		"""
-		Get information from the all bhs catalog to find the information for the last snapshot black holes exist. This information is also needed as we walk down the sublink tree. 
+		Get information from the all bhs catalog to find the information for the last snapshot black holes exist. This information is also needed as we walk down the sublink tree.
 		"""
 
 		# get initial information and calculate raw subhalo id number according to Illustris convention
@@ -159,13 +156,13 @@ class FindBadBlackHoles:
 
 	def search_bad_black_holes(self):
 		"""
-		Find bad black holes using the method described in the FindBadBlackHoles class description. 
+		Find bad black holes using the method described in the FindBadBlackHoles class description.
 		"""
 
 		# get all the information from the all black holes catalog needed
-		subID_raw_filtered, part_ids_all, snaps_all, subID_raw_all,bh_masses_all = self.get_subs_from_all_bhs()
+		subID_raw_filtered, part_ids_all, snaps_all, subID_raw_all, bh_masses_all = self.get_subs_from_all_bhs()
 
-		# open the sublink tree file. Keep it open because it is 
+		# open the sublink tree file. Keep it open because it is
 		# too much information to store it all in memory
 		f_sublink = h5py.File(self.directory + 'sublink_short.hdf5', 'r')
 
@@ -194,7 +191,7 @@ class FindBadBlackHoles:
 
 				# check if the descendant will have a black hole in it
 				if f_sublink['SubhaloLenType'][desc_ind][5] > 0:
-					
+
 					# figure out which subhalo in all bhs catalog corresponds to this sub with a black hole from the sublink catalog
 					ind_sub = np.where(subID_raw_all == subID_raw_sublink[desc_ind])[0][0]
 
@@ -216,5 +213,3 @@ class FindBadBlackHoles:
 		np.savetxt(self.directory + 'bad_black_holes.txt', bad_arr)
 		f_sublink.close()
 		return
-
-
