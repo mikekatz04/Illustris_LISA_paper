@@ -51,10 +51,10 @@ if __name__ == "__main__":
 	if args.all==False and args.stars==False and args.gas == False and args.dm ==False:
 		raise Exception('Need to specify at least one of --all, --start, --gas, or --dm.')
 
-	#confirm download to user	
+	# confirm download to user	
 	print("You want to download subhalo %i from snapshot %i in Illustris run %i." %(args.sub, args.snap, args.ill_run))
 
-	#set the cutout request based on command line input
+	# set the cutout request based on command line input
 	if args.all:
 		cut_req = {'bhs':'all', 'gas':'Coordinates,Masses,Velocities,StarFormationRate', 'stars':'Coordinates,Masses,Velocities,GFM_StellarFormationTime', 'dm':'Coordinates'}
 
@@ -67,11 +67,11 @@ if __name__ == "__main__":
 		if args.dm:
 			cut_req['dm'] = 'Coordinates'
 
-	#download
+	# download
 	base_url = "http://www.illustris-project.org/api/Illustris-%i/" %args.ill_run
 	cutout = download_sub(base_url,args.snap,args.sub, cut_req)
 
-	#move file in 
+	# move file in 
 	if args.move:
 		os.rename(cutout, '%i/%i_sub_cutouts/cutout_%i_%i.hdf5'%(args.snap, args.snap, args.snap, args.sub))
 	else:

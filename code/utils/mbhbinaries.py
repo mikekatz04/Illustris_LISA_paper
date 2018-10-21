@@ -3,10 +3,12 @@ import scipy.constants as ct
 import numpy as np
 import pdb
 
+
 def mass_ratio_func(m1, m2):
 		up = (m1 >= m2)
 		down = (m1 < m2)
 		return up* (m2/m1) + down* (m1/m2)
+
 
 class MassiveBlackHoleBinaries:
 	def evolve(self):
@@ -14,7 +16,7 @@ class MassiveBlackHoleBinaries:
 		self.t_delay, self.e_f = self.calculate_timescale()
 		self.coalescence_time = self.formation_time + self.t_delay
 		return
-		
+
 	def readout(self, keys, fp_out):
 		out = np.array([getattr(self, key) for key in keys]).T
 		out_key = ''
@@ -34,24 +36,24 @@ class AnalyticApproximations:
 		factor_1=3.0/(3.**(0.73))
 		M_p_0=M_p/((1.+z)**(-0.6))
 		factor_2=(M_p_0/(1.E+8))**0.66
-		
+
 		half_radius=factor_1*factor_2*(1.+z)**(-0.71)
-		
+
 		return half_radius
 
 	def velocity_dispersion(M_p,z):
-	 
+
 		factor_1=190.0
-		
+
 		M_p_0=M_p/((1.+z)**(-0.6))
 		#velocity_dispersion=factor_1*factor_2*(1.+z)**(0.44)
-		
+
 		#velocity_dispersion=(M_p/1.E+8/1.66)**(1./5.)*200.  used before
-		
+
 		factor_2=(M_p_0/(1.E+8))**0.2
-		
+
 		velocity_dispersion=factor_1*factor_2*(1.+z)**(0.056)
-		
+
 		return velocity_dispersion
 
 	def influence_radius(M_p,vel_disp):
@@ -84,7 +86,7 @@ class AnalyticApproximations:
 	def GW_timescale_func(self):
 
 		#from shane's gw guide
-		
+
 		self.a_crit = find_a_crit(self) #pc
 
 		#convert a_GW to meters
@@ -97,14 +99,14 @@ class AnalyticApproximations:
 		if e_f == 0:
 			tau_circ = a_0**4/(4*beta) # meters
 			return tau_circ/(ct.c*ct.Julian_year) #c to meters and julian year to years
-		
+
 		c_0 = a_0 * (1 - e**2)/e**(12/19) * (1 + (121/304) * e**2)**(-870./2299.)
 
 		e_integral = quad(e_integral_func, 0.0, e)
 
 		tau_merge = (12./19.)*c_0**4/beta*e_integral
 
-		
+
 		return tau_merge/(ct.c*ct.Julian_year) #c to meters and julian year to years
 
 	"""

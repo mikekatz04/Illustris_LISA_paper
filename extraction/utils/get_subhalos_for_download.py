@@ -63,7 +63,7 @@ class FindSubhalosForSearch:
 		with h5py.File('bhs_all_new.hdf5', 'r') as f_all:
 			all_arr = np.core.records.fromarrays([f_all['ParticleIDs_new'][:], f_all['Snapshot'][:], f_all['Subhalo'][:]], names='id,snap,sub')
 
-		#sort the array
+		# sort the array
 		sort_all = np.argsort(all_arr, order=('snap','sub'))
 
 		all_arr = all_arr[sort_all]
@@ -79,7 +79,7 @@ class FindSubhalosForSearch:
 			subID_raw_gc = np.asarray(f_gc['Snapshot'][:]*1e12 + f_gc['SubhaloID'][:], dtype=np.uint64)
 			SubhaloLenType = f_gc['SubhaloLenType'][:]
 
-		#sort the array
+		# sort the array
 		sort_gc = np.argsort(subID_raw_gc)
 
 		return subID_raw_gc, SubhaloLenType, sort_gc
@@ -88,7 +88,7 @@ class FindSubhalosForSearch:
 		"""
 		As discussed in the paper, if the bhs do not have an associated halo before or after merger, the merger is not considered.
 		"""
-		#get all necessary information from files
+		# get all necessary information from files
 		id_in_new, id_out_new, merg_snap = self.gather_from_merger_file()
 		all_arr = self.gather_from_all_bhs_file()
 		subID_raw_gc, SubhaloLenType, sort_gc = self.gather_from_subs_with_bhs
@@ -101,16 +101,16 @@ class FindSubhalosForSearch:
 			if i % 100 == 0:
 				print(i)
 
-			#get the information specific to this merger
+			# get the information specific to this merger
 			id_in = id_in_new[m]
 			id_out = id_out_new[m]
 			snap = merg_snap[m]
 
-			#look for host galaxy post merger
+			# look for host galaxy post merger
 			try:
 				ind_final = np.where((all_arr['id'] == id_out) & (all_arr['snap'] == snap))[0][0]
 
-			#if not found, just go to next merger because this one will not be considered
+			# if not found, just go to next merger because this one will not be considered
 			except IndexError:
 				continue
 
@@ -127,17 +127,17 @@ class FindSubhalosForSearch:
 			except IndexError:
 				continue
 
-			#prev_in_sub
+			# prev_in_sub
 			try:
 				ind_prev_in = np.where((all_arr['id'] == id_in) & (all_arr['snap'] == prev_snap))[0][0]
 
 			except IndexError:
 				continue
 
-			#some constituent black holes are in the same subhalo prior to merger. If desired this will go back to the next sub. We do not use this in the paper. 
+			# some constituent black holes are in the same subhalo prior to merger. If desired this will go back to the next sub. We do not use this in the paper. 
 			if self.use_second_sub_back:
 				if all_arr['sub'][ind_prev_in] == all_arr['sub'][ind_prev_out]:
-					#prev_out_sub
+					# prev_out_sub
 					snap = prev_snap
 					if snap-1 in self.skip_snaps:
 						prev_snap = snap-2
@@ -150,54 +150,54 @@ class FindSubhalosForSearch:
 					except IndexError:
 						continue
 
-					#prev_in_sub
+					# prev_in_sub
 					try:
 						ind_prev_in = np.where((all_arr['id'] == id_in) & (all_arr['snap'] == prev_snap))[0][0]
 
 					except IndexError:
 						continue
 
-			#if all three subhalos are found, append to subs to search
+			# if all three subhalos are found, append to subs to search
 			subs_to_search.append({'merger': m, 'final_out':ind_final, 'prev_out': ind_prev_out, 'prev_in': ind_prev_in})
 
-		#gather list
+		# gather list
 		subs_to_search = {key: [subs_to_search[i][key] for i in range(len(subs_to_search))] for key in subs_to_search[0].keys()}
 
-		#convert to arrays
+		# convert to arrays
 		subs_to_search = {key: np.asarray(subs_to_search[key],dtype=np.dtype(int)) for key in subs_to_search}
 
-		#final_out represents and index to the subhalo in all_arr
+		# final_out represents and index to the subhalo in all_arr
 		subID_raw_mergers = np.asarray(all_arr['snap'][np.asarray(subs_to_search['final_out'], dtype=int)]*1e12 + all_arr['sub'][np.asarray(subs_to_search['final_out'], dtype=int)], dtype=np.int64)
 
-		#get the index in subs_with_bhs.hdf5 information for all host galaxies post merger
+		# get the index in subs_with_bhs.hdf5 information for all host galaxies post merger
 		inds_final_gc = sort_gc[np.searchsorted(subID_raw_gc[sort_gc], subID_raw_mergers)]
 
-		#get number of particles for each type to check resolution
+		# get number of particles for each type to check resolution
 		SubhaloLenType = SubhaloLenType[inds_final_gc]
 
-		#keep only galaxies with specific limits on particle counts
-		#80 gas cells, 80 stars, and 300 dm particles following Kelley et al 2017 and Blecha et al 2016
+		# keep only galaxies with specific limits on particle counts
+		# 80 gas cells, 80 stars, and 300 dm particles following Kelley et al 2017 and Blecha et al 2016
 		keep1 = np.where((SubhaloLenType[:,0] >=80) & (SubhaloLenType[:,1] >= 300) & (SubhaloLenType[:,4]>=80))[0]
 
-		#filter out unresolved galaxies
+		# filter out unresolved galaxies
 		subs_to_search = {key:subs_to_search[key][keep1] for key in subs_to_search}
 
-		#guide dictionary for output with integers
+		# guide dictionary for output with integers
 		which = {'final_out':3, 'prev_out':2, 'prev_in':1}
 
-		#populate an output list to be read out and then concatenate into single array
+		# populate an output list to be read out and then concatenate into single array
 		out = []
 		for key in ['final_out', 'prev_in', 'prev_out']:
 			out.append([subs_to_search['merger'], all_arr['snap'][subs_to_search[key]], all_arr['sub'][subs_to_search[key]], np.full(len(subs_to_search[key]), which[key])])
 
 		out = np.concatenate(out, axis=1).T
 
-		#build structured array for sorting
+		# build structured array for sorting
 		out = np.core.records.fromarrays([out[:,0], out[:,3], out[:,1], out[:,2]], dtype=[('m', np.dtype(int)), ('which', np.dtype(int)), ('snap', np.dtype(int)), ('sub', np.dtype(int))])
 
 		out = np.sort(out, order=('m','which', 'snap','sub'))
 
-		#read out
+		# read out
 		np.savetxt('snaps_and_subs_needed.txt',out , fmt='%i\t%i\t%i\t%i', header = 'which number is (3, final_out) (2, prev_out) (1,prev_in)\nmerger\twhich\tsnap\tsub')
 
 		return

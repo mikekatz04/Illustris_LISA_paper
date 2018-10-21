@@ -36,7 +36,7 @@ class SubPartIDs:
 		self.ill_run = ill_run
 		self.directory = directory
 
-		#see if the new columns are added and if the files exist
+		# see if the new columns are added and if the files exist
 		if 'bhs_mergers_new.hdf5' in os.listdir(self.directory):
 			with h5py.File('bhs_mergers_new', 'r') as f:
 				if 'mass_in_new' in list(f):
@@ -47,7 +47,7 @@ class SubPartIDs:
 		else:
 			self.mergers_needed = True
 
-		#bhs_all_new.hdf5 should be in the folder from `find_bhs.py`
+		# bhs_all_new.hdf5 should be in the folder from `find_bhs.py`
 		with h5py.File('bhs_all_new.hdf5', 'r') as f:
 			if 'ParticleIDs_new' in list(f):
 				self.all_needed = False
@@ -77,7 +77,7 @@ class SubPartIDs:
 
 		fp = get('http://www.illustris-project.org/api/Illustris-%i/files/blackhole_mergers.hdf5'%self.ill_run)
 
-		#move and rename file in correct directory
+		# move and rename file in correct directory
 		os.rename(fp, self.directory + 'bhs_all_new.hdf5')
 
 		print('blackhole_mergers-ILL%i.hdf5 -> finished download.'%self.ill_run)
@@ -88,13 +88,13 @@ class SubPartIDs:
 		Locate all of the mergers where the IDs need to be switched. 
 		"""
 
-		#download the original file if it is not in folder. 
+		# download the original file if it is not in folder. 
 		if 'bhs_mergers_new.hdf5' not in os.listdir(self.directory):
 			self.download_original_bh_merger_file()
 
 		with h5py.File(self.directory + 'bhs_mergers_new.hdf5', 'r') as f_merg:
 
-			#get original quantities
+			# get original quantities
 			mass_in = f_merg['mass_in'][:]
 			mass_out = f_merg['mass_out'][:]
 			time = f_merg['time'][:]
@@ -106,7 +106,7 @@ class SubPartIDs:
 
 			num_bad = 0
 
-			#populate the change list with mergers where the ID that lives on is the smaller black hole
+			# populate the change list with mergers where the ID that lives on is the smaller black hole
 			change = []
 			for m in range(len(mass_in)):
 				out_val = np.argmax(masses[m])
@@ -114,8 +114,8 @@ class SubPartIDs:
 					num_bad+=1
 					change.append((m, partIDs_out[m],partIDs_in[m], time[m], snap[m]))
 
-			#populate structured arrays for easy reference to each quantity
-			#we make three copies because we will fill adjust these arrays as we fill each file. 
+			# populate structured arrays for easy reference to each quantity
+			# we make three copies because we will fill adjust these arrays as we fill each file. 
 			self.change1 = np.array(change, dtype=[('merger', '<i4'), ('id_remove', np.dtype('uint64')), ('id_keep', np.dtype('uint64')), ('time', '<f4'), ('snap', '<i4')])
 
 			self.change2 = np.array(change, dtype=[('merger', '<i4'), ('id_remove', np.dtype('uint64')), ('id_keep', np.dtype('uint64')), ('time', '<f4'), ('snap', '<i4')])
@@ -129,7 +129,7 @@ class SubPartIDs:
 		"""
 		Fix the mergers in ``bhs_mergers_new.hdf5``. 
 		"""
-		#get original data
+		# get original data
 		with h5py.File(self.directory + 'bhs_mergers_new.hdf5', 'r') as f_merg:
 			mass_in = f_merg['mass_in'][:]
 			mass_out = f_merg['mass_out'][:]
@@ -142,25 +142,25 @@ class SubPartIDs:
 
 		change = self.change1
 
-		#these arrays will be searched for changes
+		# these arrays will be searched for changes
 		partIDs = np.array([partIDs_in, partIDs_out]).T
 		time = np.array([time, time]).T
 
 		printer('Number of mergers to change:', len(change))
 		for i in range(len(change)):
 
-			#find all future merger indices that need fixing. 
+			# find all future merger indices that need fixing. 
 			inds_fix = np.where((partIDs == change['id_remove'][i]) & (time > change['time'][i]))
 
-			#fix this specific merger
+			# fix this specific merger
 			ind_switch = change['merger'][i]
 
-			#this changes all future IDs of the bad black hole to the good black hole
-			#nothing with mass happens here
+			# this changes all future IDs of the bad black hole to the good black hole
+			# nothing with mass happens here
 			if len(inds_fix) != 0:
 				partIDs[inds_fix] = change['id_keep'][i]
 			
-			#fix particleIDs and mass for the merger that needs to be fixed
+			# fix particleIDs and mass for the merger that needs to be fixed
 			partIDs[ind_switch][0] = change['id_remove'][i]
 			partIDs[ind_switch][1] = change['id_keep'][i]
 
@@ -169,9 +169,9 @@ class SubPartIDs:
 			masses[ind_switch][0] = trans_in_remove
 			masses[ind_switch][1] = trans_out_keep
 
-			#fix change array so that it keeps updated bad black hole ids with good ones 
-			#for only future iterations
-			#Need to do this for both id_keep columns and id_remove. This is becuse id_remove will be in the future and will need to reflect changes from here. 
+			# fix change array so that it keeps updated bad black hole ids with good ones 
+			# for only future iterations
+			# Need to do this for both id_keep columns and id_remove. This is becuse id_remove will be in the future and will need to reflect changes from here. 
 			inds_fix = np.where((change['id_keep'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
 			change['id_keep'][inds_fix] = change['id_keep'][i]
 
@@ -180,7 +180,7 @@ class SubPartIDs:
 
 			print(i)
 
-		#read out
+		# read out
 		with h5py.File(self.directory + 'bhs_mergers_new.hdf5', 'a') as f_merg:
 			f_merg['id_in_new'] = partIDs[:,0]
 			f_merg['mass_in_new'] = masses[:,0]
@@ -195,22 +195,22 @@ class SubPartIDs:
 		Update all ideas in ``bhs_all_new.hdf5`` with their new IDs
 		"""
 
-		#original data
+		# original data
 		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'r') as f_all:
 			partIDs_all = f_all['ParticleIDs'][:]
 			snap_all = f_all['Snapshot'][:]
 
-		#same process as mergers, except without having to actually fix the merger
+		# same process as mergers, except without having to actually fix the merger
 		change = self.change2
 		for i in range(len(change)):
 			inds_fix = np.where((partIDs_all == change['id_remove'][i]) & (snap_all >= change['snap'][i]))[0]
 
-			#if there is no switch needed
+			# if there is no switch needed
 			if len(inds_fix) == 0:
 				print('no change no change')
 			partIDs_all[inds_fix] = change['id_keep'][i]
 
-			#still need to update change array even if there is no switch needed
+			# still need to update change array even if there is no switch needed
 			inds_fix = np.where((change['id_keep'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
 			change['id_keep'][inds_fix] = change['id_keep'][i]
 
@@ -219,7 +219,7 @@ class SubPartIDs:
 
 			print(i)
 
-		#read out
+		# read out
 		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'a') as f_all:
 			f_all.create_dataset('ParticleIDs_new', data = partIDs_all, dtype = partIDs_all.dtype.name, chunks = True, compression = 'gzip', compression_opts = 9)
 
@@ -245,11 +245,11 @@ class SubPartIDs:
 		Update IDs in ``bhs_details_new.hdf5``. (This process takes the longest due to the size of the dataset.) 
 		"""
 
-		#download the original file if it is not in folder. 
+		# download the original file if it is not in folder. 
 		if 'bhs_details_new.hdf5' not in os.listdir(self.directory):
 			self.download_details_file()
 
-		#original data
+		# original data
 		with h5py.File(self.directory + 'bhs_details_new.hdf5', 'r') as f_dets:
 			partIDs_details = f_dets['id'][:]
 			time_details = f_dets['time'][:]
@@ -267,7 +267,7 @@ class SubPartIDs:
 				print('No change needed')
 			partIDs_details[inds_fix] = change['id_keep'][i]
 
-			#Need to update change array.
+			# Need to update change array.
 			inds_fix = np.where((change['id_keep'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
 			change['id_keep'][inds_fix] = change['id_keep'][i]
 
@@ -276,7 +276,7 @@ class SubPartIDs:
 
 			print(i)
 
-		#read out
+		# read out
 		with h5py.File(self.directory + 'bhs_details_new.hdf5', 'a') as f_dets_new:
 			f_dets_new.create_dataset('id_new', data = partIDs_details, dtype = partIDs_details.dtype.name, chunks = True, compression = 'gzip', compression_opts = 9)
 
