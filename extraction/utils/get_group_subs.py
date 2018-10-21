@@ -44,13 +44,13 @@ class GetGroupSubs:
 			with h5py.File(self.directory + 'subs_with_bhs.hdf5', 'r') as f:
 				max_snap = np.asarray(f['Snapshot'][:]).max()
 
+			self.start_snap = max_snap + 1
+			self.needed = True
+
 			# if the maximum snap (135) is in there, move on.
 			if max_snap == 135:
 				print("get groupcat file info already complete")
 				self.needed = False
-
-			self.start_snap = max_snap + 1
-			self.needed = True
 
 		else:
 			self.start_snap = first_snap_with_bhs
