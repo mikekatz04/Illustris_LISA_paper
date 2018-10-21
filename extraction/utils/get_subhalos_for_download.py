@@ -2,6 +2,7 @@
 MAIN PURPOSE: final check for which subhalos we need to download primarily based on resolution requirements.
 """
 
+import os
 import numpy as np
 import h5py
 
