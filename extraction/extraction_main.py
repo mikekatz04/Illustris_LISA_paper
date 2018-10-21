@@ -1,5 +1,5 @@
 """
-This file controls the Illustris black hole extraction and filtering process. 
+This file controls the Illustris black hole extraction and filtering process.
 """
 
 import os
@@ -19,7 +19,7 @@ from utils.create_final_data import CreateFinalDataset
 
 class MainProcess:
 	"""
-	MainProcess contains and runs each major piece associated with the Illustris black hole extraction and filtering process. 
+	MainProcess contains and runs each major piece associated with the Illustris black hole extraction and filtering process.
 
 		attributes:
 			:param	directory - (str) - directory to work in
@@ -48,16 +48,16 @@ class MainProcess:
 
 	def sublink_extraction(self):
 		"""
-		###### Sublink Extraction #######
-		We first download the sublink trees and extract only the necessary information to conserve memory. The extracted files are kept separate as ``sublink_short_i.hdf5`` for the ith sublink file. There is also ``sublink_short.hdf5`` file that combines all this information. The code is designed to check for these files and skip if needed. 
+		# Sublink Extraction #
+		We first download the sublink trees and extract only the necessary information to conserve memory. The extracted files are kept separate as ``sublink_short_i.hdf5`` for the ith sublink file. There is also ``sublink_short.hdf5`` file that combines all this information. The code is designed to check for these files and skip if needed.
 		"""
 
 		print('\n\nStart Preparing Sublink Files')
 		prep_sublink_kwargs = {
-			'num_files':2,
-			'keys':['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass','SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID','SubhaloSFR'],
-			'directory':self.directory,
-			'ill_run':3,
+			'num_files': 2,
+			'keys': ['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass', 'SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID', 'SubhaloSFR'],
+			'directory': self.directory,
+			'ill_run': 3,
 		}
 
 		prep_sublink = PrepSublink(**prep_sublink_kwargs)
@@ -70,24 +70,23 @@ class MainProcess:
 
 	def get_group_subs(self):
 		"""
-		###### Group Catalog Information #####
+		# Group Catalog Information #
 		Get group catalog information for all the subhalos with black holes in them. Code is designed to download from Illustris server, at snapshot intervals. It picks back up where it left off if the download times out. Returns ``subs_with_bhs.hdf5``
 		"""
 
 		print('\nStart group catalog extraction for subhalos with black holes.')
 
 		get_group_subs_kwargs = {
-			'first_snap_with_bhs':31, 
-			'snaps_to_skip':[53,55], 
-			'additional_keys':['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'], 
-			'ill_run':3, 
-			'directory':self.directory
+			'first_snap_with_bhs': 31,
+			'snaps_to_skip': [53, 55],
+			'additional_keys': ['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'],
+			'ill_run': 3,
+			'directory': self.directory
 		}
 
 		get_groupcat = GetGroupSubs(**get_group_subs_kwargs)
 		if get_groupcat.needed:
 			get_groupcat.download_and_add_file_info()
-
 
 		print('Finished extracting subhalo information from group catalog files.\n')
 
@@ -95,20 +94,19 @@ class MainProcess:
 
 	def find_sublink_indices(self):
 		"""
-		###### Find Sublink Indices #####
+		# Find Sublink Indices #
 			Append index information into the ``sublink_short.hdf5`` dataset for the SubhaloID and DescendantID. This allows for fast descendant searches.
 		"""
 		print('\nStart index find within subhalo_short.hdf5')
 
 		find_sublink_indices_kwargs = {
 			'num_files': 6,
-			'directory':self.directory
+			'directory': self.directory
 		}
 
 		sublink_indices = SublinkIndexFind(**find_sublink_indices_kwargs)
 		if sublink_indices.needed:
 			sublink_indices.find_indices()
-
 
 		print('Finished index search within subhalo_short.hdf5.\n')
 
@@ -116,19 +114,19 @@ class MainProcess:
 
 	def find_bhs(self):
 		"""
-		##### Gather All Black Hole Particle Info #####
-			Find all the black holes at each snapshot, gather there particle information and write them to a file ``bhs_all_new.hdf5``. This is performed by downloading snapshot chunks and group catalog chunks to efficiently search subhalos with bhs and match black hole particle IDs to there corresponding host galaxy. 
+		# Gather All Black Hole Particle Info #
+			Find all the black holes at each snapshot, gather there particle information and write them to a file ``bhs_all_new.hdf5``. This is performed by downloading snapshot chunks and group catalog chunks to efficiently search subhalos with bhs and match black hole particle IDs to there corresponding host galaxy.
 		"""
 		print('\nStart finding all bhs particle information.')
 
 		find_bhs_kwargs = {
-			'ill_run':3, 
-			'directory':self.directory, 
-			'num_chunk_files_per_snapshot':512, 
-			'num_groupcat_files':1, 
-			'first_snap_with_bhs':30, 
-			'skip_snaps':[53,55], 
-			'max_snap':135
+			'ill_run': 3,
+			'directory': self.directory,
+			'num_chunk_files_per_snapshot': 512,
+			'num_groupcat_files': 1,
+			'first_snap_with_bhs': 30,
+			'skip_snaps': [53, 55],
+			'max_snap': 135
 		}
 
 		get_bhs = LocateBHs(**find_bhs_kwargs)
@@ -136,22 +134,21 @@ class MainProcess:
 			get_bhs.download_bhs_all_snapshots()
 			get_bhs.combine_black_hole_files()
 
-
 		print('Finished finding black hole particle information and created ``bhs_all_new.hdf5`` file.\n')
 
 		return
 
 	def sub_partIDs_in_mergs(self):
 		"""
-		##### Substitue Particle IDs for Continuity #####
-			Find all mergers where the low mass black hole ID lives on. Update IDs for all future events so that the more massive bh ID lives on. This adds columns with new IDs to ``bhs_mergers_new.hdf5``, ``bhs_all_new.hdf5``, and ``bhs_details_new.hdf5``. This process works very well but is not perfect. Where this fails, we still keep black holes in the end that are 10M_{seed} (>10^6) (see Kelley et al 2017 for this cut). 
+		# Substitue Particle IDs for Continuity #
+			Find all mergers where the low mass black hole ID lives on. Update IDs for all future events so that the more massive bh ID lives on. This adds columns with new IDs to ``bhs_mergers_new.hdf5``, ``bhs_all_new.hdf5``, and ``bhs_details_new.hdf5``. This process works very well but is not perfect. Where this fails, we still keep black holes in the end that are 10M_{seed} (>10^6) (see Kelley et al 2017 for this cut).
 		"""
 		print('\nStart substituting IDs for continuity.')
 
 		sub_partIDs_in_mergs_kwargs = {
-			'ill_run':3, 
-			'directory':self.directory,
-			'run_details':False,
+			'ill_run': 3,
+			'directory': self.directory,
+			'run_details': False,
 		}
 
 		sub_ids = SubPartIDs(**sub_partIDs_in_mergs_kwargs)
@@ -164,10 +161,9 @@ class MainProcess:
 		if sub_ids.all_needed:
 			sub_ids.add_new_ids_to_all_bhs_file()
 
-		#by default the details file is not done
+		# by default the details file is not done
 		if sub_ids.details_needed:
 			sub_ids.add_new_ids_to_details_file()
-
 
 		print('Finished substituting IDs for continuity and created ``bhs_mergers_new.hdf5`` and ``bhs_details_new.hdf5`` files.\n')
 
@@ -175,17 +171,17 @@ class MainProcess:
 
 	def test_good_bad_mergers(self):
 		"""
-		##### Find Good/Bad Mergers #####
-			First: we find all bad black holes resulting from fly-by encounters of host galaxies. Bad black holes are spawned by a host galaxy after it loses its original black hole in the fly-by encounter. See the documentation for `test_good_bad_mergers.py` for information on this procedure. This procedure is the key step to accessing the near-seed mass black holes. 
+		# Find Good/Bad Mergers #
+			First: we find all bad black holes resulting from fly-by encounters of host galaxies. Bad black holes are spawned by a host galaxy after it loses its original black hole in the fly-by encounter. See the documentation for `test_good_bad_mergers.py` for information on this procedure. This procedure is the key step to accessing the near-seed mass black holes.
 
 			Second: black holes that exist for less than two snapshots and have masses less than 10^6 are also considered bad black holes.
 
-			Afte these two steps, the filtered set of good mergers is output to ``good_mergers.txt`` file detailing the good mergers by black hole standards. 
+			Afte these two steps, the filtered set of good mergers is output to ``good_mergers.txt`` file detailing the good mergers by black hole standards.
 		"""
 		print('\nStart finding good/bad mergers.')
 
 		find_bad_black_holes_kwargs = {
-			'directory':self.directory
+			'directory': self.directory
 		}
 
 		bad_bhs = FindBadBlackHoles(**find_bad_black_holes_kwargs)
@@ -193,7 +189,7 @@ class MainProcess:
 			bad_bhs.search_bad_black_holes()
 
 		test_good_bad_mergers_kwargs = {
-			'directory':self.directory
+			'directory': self.directory
 		}
 
 		good_or_bad_mergers = TestGoodBadMergers(**test_good_bad_mergers_kwargs)
@@ -205,15 +201,15 @@ class MainProcess:
 
 	def get_subhalos_for_download(self):
 		"""
-		##### Gather Subhalos for Download #####
-			Gather all the subhalos associated with black hole mergers, check if they have a required resolution, and then create a file to guide the downloading process. 
+		# Gather Subhalos for Download #
+			Gather all the subhalos associated with black hole mergers, check if they have a required resolution, and then create a file to guide the downloading process.
 		"""
 		print('\nStart gathering subhalos for download.')
 
 		get_subhalos_for_download_kwargs = {
-			'directory':self.directory, 
-			'skip_snaps':[53,55], 
-			'use_second_sub_back':False,
+			'directory': self.directory,
+			'skip_snaps': [53, 55],
+			'use_second_sub_back': False,
 		}
 
 		gather_subs = FindSubhalosForSearch(**get_subhalos_for_download_kwargs)
@@ -226,20 +222,19 @@ class MainProcess:
 
 	def download_needed(self):
 		"""
-		##### Download All Needed Subhalos #####
+		# Download All Needed Subhalos #
 			This downloads all the particle information needed in each subhalo to analyze merger-related host galaxies. For remnent host galaxies, we want information about stars, gas, dm, and bhs. For constituent host galaxies, we want information about bhs and stars. (bhs are not really necessary because we have this information, but the memory necessary for this is really small, so we include it for completeness.)
 		"""
 		print('\nStart downloading subhalos.')
 
 		download_needed_kwargs = {
-			'directory':self.directory, 
-			'ill_run':1,
+			'directory': self.directory,
+			'ill_run': 1,
 		}
 
 		download = DownloadNeeded(**download_needed_kwargs)
-		#this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``. 
+		# this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
 		download.download_needed_subhalos()
-
 
 		print('Finished downloading subhalos.\n')
 
@@ -247,17 +242,17 @@ class MainProcess:
 
 	def density_vel_disp_of_subs(self):
 		"""
-		##### Calculate Density Profiles and Stellar Velocity Dispersions #####
-			This calculates density profiles and velocity dispersions for the mergers. It gets density profiles for all particle types in remnant black hole host galaxies. Stellar velocity dispersions are calcualted for all merger-related galaxies. If a fit does not converge, the merger is no longer considered part of our catalog. 
+		# Calculate Density Profiles and Stellar Velocity Dispersions #
+			This calculates density profiles and velocity dispersions for the mergers. It gets density profiles for all particle types in remnant black hole host galaxies. Stellar velocity dispersions are calcualted for all merger-related galaxies. If a fit does not converge, the merger is no longer considered part of our catalog.
 		"""
 		print('\nStart calculating profiles and dispersions.')
 
 		density_vel_disp_of_subs_kwargs = {
-			'directory':self.directory, 
+			'directory': self.directory,
 		}
 
 		dens_vel = DensityProfVelDisp(**density_vel_disp_of_subs_kwargs)
-		#this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
+		# this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
 
 		if dens_vel.needed:
 			dens_vel.fit_main()
@@ -268,29 +263,29 @@ class MainProcess:
 
 	def create_final_data(self):
 		"""
-		##### Create Final Dataset #####
-			This gathers all of the information attained in this analysis and combines the good mergers in a final dataset. 
+		# Create Final Dataset #
+			This gathers all of the information attained in this analysis and combines the good mergers in a final dataset.
 		"""
 		print('\nStart generating final dataset.')
 
 		create_final_data_kwargs = {
-			'directory':self.directory, 
+			'directory': self.directory,
 		}
 
 		final_data = CreateFinalDataset(**create_final_data_kwargs)
-		#this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
+		# this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
 
 		if final_data.needed:
 			final_data.create_final_data()
 
 		print('Finished generating final dataset and created file ``simulation_input_data.txt``.\n')
 
-		return		
+		return
 
 
 def main():
 
-	#default is to run the whole thing
+	# default is to run the whole thing
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--all", action="store_true")
@@ -325,8 +320,6 @@ def main():
 			getattr(main_process, key)()
 
 	return
-
-
 
 
 if __name__ == '__main__':

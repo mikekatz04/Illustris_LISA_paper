@@ -85,7 +85,7 @@ class CreateFinalDataset:
 
 		velocity_dispersions = np.genfromtxt(self.directory + 'velocity_dispersions.txt', names=True, dtype=None)
 
-		#use the density profiles dataset to determine the final good mergers
+		# use the density profiles dataset to determine the final good mergers
 		good_mergers = np.genfromtxt(self.directory + 'density_profiles.txt', names=True, dtype=None)
 
 		return velocity_dispersions, good_mergers
@@ -97,17 +97,17 @@ class CreateFinalDataset:
 
 		velocity_dispersions, good_mergers = self.gather_density_profiles_and_vel_disps()
 
-		#all the unique mergers appearing in the density profiles
+		# all the unique mergers appearing in the density profiles
 		uni_mergers = np.unique(good_mergers['m'])
 
-		#unique mergers in velocity dispersions which is the same as in density profiles. Also, get the indices of each unique entry
+		# unique mergers in velocity dispersions which is the same as in density profiles. Also, get the indices of each unique entry
 		uni_vel, uni_vel_ind = np.unique(velocity_dispersions['m'], return_index=True)
 
 		bh_all_partids, bh_all_snapshots, bh_all_hsml, bh_all_coordinates = self.gather_info_from_all_bhs()
 		mass_in, mass_out, id_in, id_out, scale, redshift, snapshots = self.gather_info_from_mergers(uni_mergers)
 		gc_subs, gc_snaps, gc_SubhaloMassType, gc_SubhaloVelDisp = self.gather_info_from_subs_with_bhs()
 
-		#initialize lists for all the parameters we want to read out
+		# initialize lists for all the parameters we want to read out
 		subs_out = []
 		snaps_out = []
 		vel_disps_out = []
@@ -122,14 +122,14 @@ class CreateFinalDataset:
 		redshift_out = []
 		coordinates_out = []
 
-		#make a cut based on snapshots lived by black hole. We already made this cut in previous analysis. This is here in case the user wants a longer cut or to ensure this cut is correct. 
+		# make a cut based on snapshots lived by black hole. We already made this cut in previous analysis. This is here in case the user wants a longer cut or to ensure this cut is correct. 
 		snapshot_cut = 1
 
-		#run through the mergers and gather all the output information
+		# run through the mergers and gather all the output information
 		print(len(uni_mergers))
 		for j in range(len(uni_mergers)):
 
-			#merger specifics
+			# merger specifics
 			idi = id_in[j]
 			ido = id_out[j]
 
@@ -140,59 +140,59 @@ class CreateFinalDataset:
 
 			inds_in = np.where((bh_all_partids == idi) & (bh_all_snapshots < snap))[0]
 
-			#recheck snapshot cut
+			# recheck snapshot cut
 			if len(inds_in) < snapshot_cut and msi < 1e6:
 				continue
 
-			#get the separation for this black hole
+			# get the separation for this black hole
 			bh_sep_in = bh_all_hsml[inds_in[-1]]*scale[j]
 
-			#recheck snapshot cut
+			# recheck snapshot cut
 			inds_out = np.where((bh_all_partids == ido) & (bh_all_snapshots < snap))[0]
 			if len(inds_out) < snapshot_cut and mso < 1e6:
 				continue
 
-			#get the separation for this black hole
+			# get the separation for this black hole
 			bh_sep_out = bh_all_hsml[inds_out[-1]]*scale[j]
 
-			#find index for final black hole in all bhs catalog
+			# find index for final black hole in all bhs catalog
 			ind_bh_out = np.where((bh_all_partids == ido) & (bh_all_snapshots == snap))[0][0]
 
-			#add coordinates
+			# add coordinates
 			coordinates_out.append(list(bh_all_coordinates[ind_bh_out]))
 
-			#take the max of the intial separations
+			# take the max of the intial separations
 			separation_out.append(np.max([bh_sep_in, bh_sep_out]))
 
-			#add merger index
+			# add merger index
 			merger_ind_out.append(uni_mergers[j])
 
-			#add all ids involved
+			# add all ids involved
 			ids_out.append([idi, ido, ido])
 
-			#add masses involved
+			# add masses involved
 			masses_out.append([msi, mso, msi+mso])
 
-			#add density profiles
+			# add density profiles
 			density_profiles_out.append([good_mergers['star_gamma'][j], good_mergers['gas_gamma'][j], good_mergers['dm_gamma'][j]])
 
 			redshift_out.append(redshift[j])
 
-			#the following quantities will be added in groups of three (one for each constituent and remnant black hole). We create _trans lists to be a group of 3. We then add them to an overall list. 
+			# the following quantities will be added in groups of three (one for each constituent and remnant black hole). We create _trans lists to be a group of 3. We then add them to an overall list. 
 			subs_trans = []
 			snaps_trans = []
 
-			#velocity dispersion from calculation
+			# velocity dispersion from calculation
 			vel_disps_trans = []
 
-			#velocity dispersion from the SubhaloVelDisp
+			# velocity dispersion from the SubhaloVelDisp
 			vel_disps_from_subs_trans = []
 
-			#mass for remnant host galaxy
+			# mass for remnant host galaxy
 			stellar_mass_trans = []
 			total_mass_trans = []
 
-			#iterate through the velocity dispsersion halos (groups of 3)
+			# iterate through the velocity dispsersion halos (groups of 3)
 			for k in np.arange(uni_vel_ind[j], uni_vel_ind[j]+3)[::-1]:
 				sub = velocity_dispersions[k][3]
 				snap = velocity_dispersions[k][2]
@@ -201,20 +201,20 @@ class CreateFinalDataset:
 				snaps_trans.append(snap)
 				vel_disps_trans.append(velocity_dispersions[k][4])
 
-				#get info from group catalog data
+				# get info from group catalog data
 				ind_gc = np.where((gc_snaps == snap) & (gc_subs == sub))[0][0]
 
-				#wind phase cells are counted in type 0, even though they are really type 4 see docs
+				# wind phase cells are counted in type 0, even though they are really type 4 see docs
 				stellar_mass = gc_SubhaloMassType[ind_gc][4]*1e10/h
 				total_mass = np.sum(gc_SubhaloMassType[ind_gc]*1e10/h)
 
 				stellar_mass_trans.append(stellar_mass)
 				total_mass_trans.append(total_mass)
 
-				#vel disp from group catalog
+				# vel disp from group catalog
 				vel_disps_from_subs_trans.append(gc_SubhaloVelDisp[ind_gc]*np.sqrt(3))
 
-			#add the three entry lists to the overall lists
+			# add the three entry lists to the overall lists
 			subs_out.append(subs_trans)
 			snaps_out.append(snaps_trans)
 			vel_disps_out.append(vel_disps_trans)
@@ -226,15 +226,15 @@ class CreateFinalDataset:
 				print(j)
 
 		out_list = []
-		#gather all data into single list (concatenate the quantity list)
+		# gather all data into single list (concatenate the quantity list)
 		for i in range(len(merger_ind_out)):
 			out_list.append([merger_ind_out[i]] + snaps_out[i] + subs_out[i] + ids_out[i] + masses_out[i] + [redshift_out[i]] + [separation_out[i]] + coordinates_out[i] + density_profiles_out[i] + vel_disps_out[i] + stellar_mass_out[i] + total_mass_out[i])
 
-		#write out data
+		# write out data
 		with open(self.directory + 'simulation_input_data.txt', 'w') as f:
 			f.write('merger\tsnap_prev_in\tsnapshot_prev_out\tsnapshot_fin_out\tsubhalo_prev_in\tsubhalo_prev_out\tsubhalo_fin_out\tid_new_prev_in\tid_new_prev_out\tid_new_fin_out\tmass_new_prev_in\tmass_new_prev_out\tmass_new_fin_out\tredshift\tseparation\tcoordinates_x\tcoordinates_y\tcoordinates_z\tstar_gamma\tgas_gamma\tdm_gamma\tvel_disp_prev_in\tvel_disp_prev_out\tvel_disp_fin_out\tstellar_mass_prev_in\tstellar_mass_prev_out\tstellar_mass_fin_out\ttotal_mass_prev_in\ttotal_mass_prev_out\ttotal_mass_fin_out\n')
 
-			#this ensures each data point is recorded with right dtype
+			# this ensures each data point is recorded with right dtype
 			for item in out_list:
 				for item2 in item:
 					f.write(str(item2) + '\t')
