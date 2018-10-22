@@ -49,9 +49,9 @@ class LocateBHs:
     """
 
     def __init__(self, ill_run=1, dir_output='./extraction_files/', dir_input=None, num_chunk_files_per_snapshot=512, num_groupcat_files=1, first_snap_with_bhs=30, skip_snaps=[53, 55], max_snap=135):
-
+        print(self.__class__.__name__)
         self.dir_output = dir_output
-        self.dir_input = None
+        self.dir_input = dir_input
         self.num_chunk_files_per_snapshot = num_chunk_files_per_snapshot
         self.num_groupcat_files = num_groupcat_files
         self.first_snap_with_bhs = first_snap_with_bhs
@@ -62,7 +62,8 @@ class LocateBHs:
         self.base_url = "http://www.illustris-project.org/api/Illustris-%i/" % ill_run
 
         # load which subs have black holes
-        with h5py.File('subs_with_bhs.hdf5', 'r') as f:
+        fname = os.path.join(dir_output, "subs_with_bhs.hdf5")   # "subs_with_bhs.hdf5"
+        with h5py.File(fname, 'r') as f:
             self.snaps = f['Snapshot'][:]
             self.subs = f['SubhaloID'][:]
 
@@ -70,7 +71,8 @@ class LocateBHs:
         self.reset_black_holes_dict()
 
         # check if this process is needed
-        if 'bhs_all_new.hdf5' in os.listdir(self.dir_output):
+        fname = self.bh_fname()
+        if os.path.exists(fname):
             self.needed = False
             print("\t`LocateBHs` file already exists")
         else:
@@ -118,7 +120,8 @@ class LocateBHs:
             if snap in self.skip_snaps:
                 print('Skipped snapshot', snap)
 
-            if '%i_blackholes.hdf5' % snap in os.listdir(self.dir_output):
+            fname = self.snapshot_bh_fname(snap)
+            if os.path.exists(fname):
                 continue
 
             self.download_bhs_for_snapshot(snap)
@@ -129,8 +132,13 @@ class LocateBHs:
         This downloads black holes for a specific snapshot. First, the snapshot and group catalog chunk files are needed. To do this a specific file structure is needed. See http://www.illustris-project.org/data/docs/scripts/ for info.
         """
 
-        if '%i/' % snap not in os.listdir(self.dir_output):
-            os.mkdir(self.dir_output + '%i/' % snap)
+        dir_name = self.dir_output + '%i/' % snap
+        # if dir_name not in os.listdir(self.dir_output):
+        #     os.mkdir(dir_name)
+        if not os.path.isdir(dir_name):
+            if os.path.exists(dir_name):
+                raise RuntimeError("Path '{}' exists but is not a directory!".format(dir_name))
+            os.mkdir(dir_name)
 
         print('Begin download snapshot file black hole info for snapshot', snap)
         self.download_snapshot_files(snap)
@@ -212,7 +220,8 @@ class LocateBHs:
         """
         Concatenate the information in each list of the bh dict and then read them out to a file specific to the bhs in this snapshot.
         """
-        with h5py.File(self.dir_output + '%i/%i_blackholes.hdf5' % (snap, snap), 'w') as f:
+        fname = self.snapshot_bh_fname(snap)
+        with h5py.File(fname, 'w') as f:
             for name in self.bhs_dict:
                 output = np.concatenate(self.bhs_dict[name]['values'], axis=0)
 
@@ -232,8 +241,9 @@ class LocateBHs:
         """
 
         # make sure black hole file is there!!!
-        if '%i_blackholes.hdf5' % (snap) not in os.listdir(self.dir_output + '%i/' % snap):
-            raise Exception('About to delete files when completed file (%i_blackholes.hdf5) is not there.' % snap)
+        fname = self.snapshot_bh_fname(snap)
+        if not os.path.exists(fname):
+            raise Exception('About to delete files when completed file (%s) is not there.' % fname)
 
         for f in os.listdir(self.dir_output + '%i/' % snap + 'snapdir_%03d/' % snap):
             os.remove(self.dir_output + '%i/' % snap + 'snapdir_%03d/' % snap + f)
@@ -254,7 +264,8 @@ class LocateBHs:
 
         # open snapshot specific files and populate dict
         for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
-            with h5py.File(self.dir_output + '%i/%i_blackholes.hdf5' % (snap, snap), 'r') as f:
+            fname = self.snapshot_bh_fname(snap)
+            with h5py.File(fname, 'r') as f:
                 for name in bhs_dict:
                     self.bhs_dict[name]['values'].append(f[name][:])
 
@@ -268,7 +279,8 @@ class LocateBHs:
         sort = np.argsort(checker, order=('Snapshot', 'Subhalo'))
 
         print('Write out to combined file.')
-        with h5py.File('bhs_all_new.hdf5', 'w') as f:
+        fname = self.bh_fname()
+        with h5py.File(fname, 'w') as f:
             for name in bhs_dict:
                 output = bhs_dict[name]['values'][sort]
                 dset = f.create_dataset(name, data=output, dtype=output.dtype.name, chunks=True, compression='gzip', compression_opts=9)
@@ -283,9 +295,16 @@ class LocateBHs:
         """
 
         for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
-            os.remove(self.dir_output + '%i/%i_blackholes.hdf5' % (snap, snap))
+            fname = self.snapshot_bh_fname(snap)
+            os.remove(fname)
 
         return
+
+    def snapshot_bh_fname(self, snap):
+        return os.path.join(self.dir_output, '%i/%i_blackholes.hdf5' % (snap, snap))
+
+    def bh_fname(self):
+        return os.path.join(self.dir_output, "bhs_all_new.hdf5")
 
 
 class LocateBHs_Odyssey(LocateBHs):
@@ -308,16 +327,19 @@ class LocateBHs_Odyssey(LocateBHs):
 
         # Only look at BH that have a subhhalo (those without have value '-1')
         goods = (bh_hosts['bh_subhalos'] >= 0)
+        length = np.count_nonzero(goods)
         bh_subhalos = bh_hosts['bh_subhalos'][goods]
         # bh_ids = bh_hosts['bh_ids'][goods]
+        print("\t{:.4e}/{:.4e} = {:.4f} good BHs".format(length, goods.size, length/goods.size))
         del bh_hosts
 
         # Load all BHs in this snapshot
         keys = list(self.bhs_dict.keys())
         keys.pop(keys.index('Snapshot'))
         keys.pop(keys.index('Subhalo'))
-        print("Loading all BH from snapshot '{}'".format(snap))
+        print("\tLoading all BH from snapshot '{}'".format(snap))
         snap_bhs = illpy.snapshot.loadSubset(self.dir_input, snap, ILL_BH_PART_TYPE, fields=keys)
+        print("\t\tLoaded {} BH".format(snap_bhs['count']))
 
         '''
         length = len(check_bhs_in_sub['ParticleIDs'][:])
@@ -330,7 +352,6 @@ class LocateBHs_Odyssey(LocateBHs):
             self.bhs_dict[name]['values'].append(check_bhs_in_sub[name])
         '''
 
-        length = np.count_nonzero(goods)
         self.bhs_dict['Subhalo']['values'].append(bh_subhalos)
         self.bhs_dict['Snapshot']['values'].append(np.full((length, ), snap, dtype=int))
 
