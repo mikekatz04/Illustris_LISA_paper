@@ -27,7 +27,7 @@ class SublinkIndexFind:
         with h5py.File(self.dir_output + 'sublink_short.hdf5', 'r') as f:
             keys = list(f)
             if 'Descendant_index' in keys:
-                print('Descendant indices already added to sublink_short.')
+                print('\tSublinkIndexFind descendant indices already added to sublink_short.')
                 self.needed = False
 
             else:

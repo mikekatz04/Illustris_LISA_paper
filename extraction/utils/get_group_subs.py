@@ -57,7 +57,7 @@ class GetGroupSubs:
 
             # if the maximum snap (135) is in there, move on.
             if max_snap == 135:
-                print("get groupcat file info already complete")
+                print("\tGetGroupSubs file info already complete")
                 self.needed = False
 
         else:
@@ -156,7 +156,7 @@ class GetGroupSubs_Odyssey(GetGroupSubs):
         out_snap = {}
 
         # print("loading subhalos from groupcat for snap {:d}".format(snap))
-        
+
         # Remove keys not present in raw groupcat (on Odyssey)
         keys = list(keys)
         keys.pop(keys.index('Snapshot'))
