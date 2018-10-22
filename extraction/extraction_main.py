@@ -76,11 +76,9 @@ class MainProcess:
         prep_sublink_kwargs = {
             'num_files': 2,
             'keys': ['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass', 'SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID', 'SubhaloSFR'],
-            'dir_output': self.dir_output,
-            'ill_run': 3,
         }
 
-        prep_sublink = self.PrepSublink(**prep_sublink_kwargs)
+        prep_sublink = self.PrepSublink(self, **prep_sublink_kwargs)
         if prep_sublink.needed:
             prep_sublink.download_and_convert_to_short()
             prep_sublink.combine_sublink_shorts()
@@ -97,15 +95,10 @@ class MainProcess:
         print('\nStart group catalog extraction for subhalos with black holes.')
 
         get_group_subs_kwargs = {
-            'first_snap_with_bhs': 31,
-            'snaps_to_skip': [53, 55],
             'additional_keys': ['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'],
-            'ill_run': 3,
-            'dir_output': self.dir_output,
-            'dir_input': self.dir_input
         }
 
-        get_groupcat = self.GetGroupSubs(**get_group_subs_kwargs)
+        get_groupcat = self.GetGroupSubs(self, **get_group_subs_kwargs)
         if get_groupcat.needed:
             get_groupcat.download_and_add_file_info()
 
@@ -122,10 +115,9 @@ class MainProcess:
 
         find_sublink_indices_kwargs = {
             'num_files': 6,
-            'dir_output': self.dir_output
         }
 
-        sublink_indices = self.SublinkIndexFind(**find_sublink_indices_kwargs)
+        sublink_indices = self.SublinkIndexFind(self, **find_sublink_indices_kwargs)
         if sublink_indices.needed:
             sublink_indices.find_indices()
 

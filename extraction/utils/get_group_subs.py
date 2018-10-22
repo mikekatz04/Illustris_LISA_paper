@@ -7,6 +7,7 @@ import numpy as np
 import tqdm
 
 from utils.generalfuncs import get
+from utils import SubProcess
 
 try:
     import illpy
@@ -15,7 +16,7 @@ except ImportError:
     illpy = None
 
 
-class GetGroupSubs:
+class GetGroupSubs(SubProcess):
     """
     GetGroupSubs downloads the necessary group catalog files from the Illustris server. It gathers the information we are interested in and outputs to a file. It then deletes that snapshots group catalog file. This code is designed to pick up where it left off if the downloads time out.
 
@@ -33,15 +34,15 @@ class GetGroupSubs:
             download_and_add_file_info
     """
 
-    def __init__(self, first_snap_with_bhs=30, snaps_to_skip=[53, 55], additional_keys=['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'], ill_run=1, dir_output='./extraction_files', dir_input=None):
-        print(self.__class__.__name__)
-        self.dir_output = dir_output
-        self.dir_input = dir_input
-        self.ill_run = 1
-        self.baseurl = 'http://www.illustris-project.org/api/Illustris-1/files/groupcat'
+    def __init__(self, main_proc, additional_keys=['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass']):
+        super().__init__(main_proc)
+        # self.dir_output = dir_output
+        # self.dir_input = dir_input
+        # self.ill_run = 1
+        # self.baseurl = 'http://www.illustris-project.org/api/Illustris-1/files/groupcat'
 
         # Illustris-1 has two missing snapshots (53, 55).
-        self.snaps_to_skip = snaps_to_skip
+        # self.snaps_to_skip = snaps_to_skip
 
         # the first three keys need to be Snapshot, SubhaloID, and SubhaloLenType
         self.keys = ['Snapshot', 'SubhaloID', 'SubhaloLenType'] + additional_keys
@@ -61,7 +62,7 @@ class GetGroupSubs:
                 self.needed = False
 
         else:
-            self.start_snap = first_snap_with_bhs
+            self.start_snap = self.first_snap_with_bhs
             self.needed = True
 
     def download_and_add_file_info(self):
