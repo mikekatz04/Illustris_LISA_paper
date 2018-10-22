@@ -45,6 +45,11 @@ class MainProcess:
     SublinkIndexFind = find_sublink_indices.SublinkIndexFind
     LocateBHs = find_bhs.LocateBHs
 
+    ill_run = 1
+    max_snap = 135
+    first_snap_with_bhs = 30
+    skip_snaps = [53, 55]
+
     def __init__(self, dir_output, dir_input=None):
         print(self.__class__.__name__)
         self.dir_input = dir_input
@@ -136,17 +141,11 @@ class MainProcess:
         print('\nStart finding all bhs particle information.')
 
         find_bhs_kwargs = {
-            'ill_run': 3,
-            'dir_output': self.dir_output,
-            'dir_input': self.dir_input,
             'num_chunk_files_per_snapshot': 512,
             'num_groupcat_files': 1,
-            'first_snap_with_bhs': 30,
-            'skip_snaps': [53, 55],
-            'max_snap': 135
         }
 
-        get_bhs = self.LocateBHs(**find_bhs_kwargs)
+        get_bhs = self.LocateBHs(self, **find_bhs_kwargs)
         if get_bhs.needed:
             get_bhs.download_bhs_all_snapshots()
             get_bhs.combine_black_hole_files()

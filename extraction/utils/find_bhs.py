@@ -7,12 +7,13 @@ import numpy as np
 import os
 
 from utils.generalfuncs import get
+from utils import SubProcess
 
 h = 0.704
 ILL_BH_PART_TYPE = 5   # BH particles correspond to "PartType5"
 
 
-class LocateBHs:
+class LocateBHs(SubProcess):
     """
     This class locates all of the black holes through the simulation as each snapshot. To do this, it downloads all the bh particle information from the snapshot chunks. It also downloads group catalog files for header (offset) information. It uses the snapshot python function provided in the illustris python scripts to locate which subhalos have each black hole particle. It then reads out the data to a file. This process is done separately for each snapshot in case downloading times out.
 
@@ -48,21 +49,20 @@ class LocateBHs:
             delet_snap_bh_files
     """
 
-    def __init__(self, ill_run=1, dir_output='./extraction_files/', dir_input=None, num_chunk_files_per_snapshot=512, num_groupcat_files=1, first_snap_with_bhs=30, skip_snaps=[53, 55], max_snap=135):
-        print(self.__class__.__name__)
-        self.dir_output = dir_output
-        self.dir_input = dir_input
+    def __init__(self, main_proc, num_chunk_files_per_snapshot=512, num_groupcat_files=1, first_snap_with_bhs=30, skip_snaps=[53, 55], max_snap=135):
+        super().__init__(main_proc)
+        # self.dir_output = dir_output
+        # self.dir_input = dir_input
+        # self.ill_run = ill_run
+        # self.base_url = "http://www.illustris-project.org/api/Illustris-%i/" % ill_run
         self.num_chunk_files_per_snapshot = num_chunk_files_per_snapshot
         self.num_groupcat_files = num_groupcat_files
-        self.first_snap_with_bhs = first_snap_with_bhs
-        self.max_snap = max_snap
-        self.skip_snaps = skip_snaps
-        self.ill_run = ill_run
-
-        self.base_url = "http://www.illustris-project.org/api/Illustris-%i/" % ill_run
+        # self.first_snap_with_bhs = first_snap_with_bhs
+        # self.max_snap = max_snap
+        # self.skip_snaps = skip_snaps
 
         # load which subs have black holes
-        fname = os.path.join(dir_output, "subs_with_bhs.hdf5")   # "subs_with_bhs.hdf5"
+        fname = os.path.join(self.dir_output, "subs_with_bhs.hdf5")   # "subs_with_bhs.hdf5"
         with h5py.File(fname, 'r') as f:
             self.snaps = f['Snapshot'][:]
             self.subs = f['SubhaloID'][:]
