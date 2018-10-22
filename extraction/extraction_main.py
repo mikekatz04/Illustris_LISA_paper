@@ -43,6 +43,7 @@ class MainProcess:
     GetGroupSubs = get_group_subs.GetGroupSubs
 
     def __init__(self, dir_output, dir_input=None):
+        print(self.__class__.__name__)
         self.dir_input = dir_input
         self.dir_output = dir_output
 
@@ -309,10 +310,10 @@ def main():
     # default is to run the whole thing
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--all", action="store_true")
+    parser.add_argument("--all", action="store_true", default=True)
     parser.add_argument("--odyssey", action="store_true", default=True)
     parser.add_argument("--dir_output", type=str, default='./extraction_files/')
-    parser.add_argument("--dir_input", type=str, default=None)
+    parser.add_argument("--dir_input", type=str, default='/n/ghernquist/Illustris/Runs/L75n1820FP/')
 
     parser.add_argument("--sublink_extraction", action="store_true")
     parser.add_argument("--get_group_subs", action="store_true")
@@ -333,10 +334,10 @@ def main():
         for key in keys:
             args[key] = True
 
-    else:
-        for key in keys:
-            if args[key]:
-                print('Running', key)
+    # else:
+    #     for key in keys:
+    #         if args[key]:
+    #             print('Running', key)
 
     if args['odyssey']:
         Main_Process = MainProcess_Odyssey
@@ -346,6 +347,7 @@ def main():
     main_process = Main_Process(args['dir_output'], args['dir_input'])
     for key in keys:
         if args[key]:
+            print("Running '{}'".format(key))
             getattr(main_process, key)()
 
     return
