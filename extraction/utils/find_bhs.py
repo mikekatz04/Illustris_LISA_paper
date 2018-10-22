@@ -4,12 +4,12 @@ MAIN PURPOSE: locate all the black holes and match them to their subhalos
 
 import h5py
 import numpy as np
-import snapshot
 import os
 
 from utils.generalfuncs import get
 
 h = 0.704
+ILL_BH_PART_TYPE = 5   # BH particles correspond to "PartType5"
 
 
 class LocateBHs:
@@ -48,14 +48,16 @@ class LocateBHs:
             delet_snap_bh_files
     """
 
-    def __init__(self, ill_run=1, dir_output='./extraction_files/', num_chunk_files_per_snapshot=512, num_groupcat_files=1, first_snap_with_bhs=30, skip_snaps=[53, 55], max_snap=135):
+    def __init__(self, ill_run=1, dir_output='./extraction_files/', dir_input=None, num_chunk_files_per_snapshot=512, num_groupcat_files=1, first_snap_with_bhs=30, skip_snaps=[53, 55], max_snap=135):
 
         self.dir_output = dir_output
+        self.dir_input = None
         self.num_chunk_files_per_snapshot = num_chunk_files_per_snapshot
         self.num_groupcat_files = num_groupcat_files
         self.first_snap_with_bhs = first_snap_with_bhs
         self.max_snap = max_snap
         self.skip_snaps = skip_snaps
+        self.ill_run = ill_run
 
         self.base_url = "http://www.illustris-project.org/api/Illustris-%i/" % ill_run
 
@@ -70,7 +72,7 @@ class LocateBHs:
         # check if this process is needed
         if 'bhs_all_new.hdf5' in os.listdir(self.dir_output):
             self.needed = False
-
+            print("\t`LocateBHs` file already exists")
         else:
             self.needed = True
 
@@ -132,11 +134,11 @@ class LocateBHs:
 
         print('Begin download snapshot file black hole info for snapshot', snap)
         self.download_snapshot_files(snap)
-        print('Finished downloading snapshot file black hole info for snapshot', snap)
+        print('\tFinished downloading snapshot file black hole info for snapshot', snap)
 
         print('Begin download groupcat file for snapshot', snap)
         self.download_groupcat_header_file(snap)
-        print('Finished downloading groupcat file for snapshot', snap)
+        print('\tFinished downloading groupcat file for snapshot', snap)
 
         self.populate_bh_dict(snap)
         self.read_out_to_file_snapshot(snap)
@@ -185,6 +187,7 @@ class LocateBHs:
         """
         Use `snapshot.py` to find all the black hole particles in each subhalo that has a black hole in it. You need the snapshot particle chunks and group catalog header information. This tells you the black holes in each subhalo which is important for pairing a black hole to its host galaxy. These values are populated in the bh_dict.
         """
+        import snapshot
 
         # figure out which subs are in this specific snapshot
         subs_to_look_in = self.subs[self.snaps == snap]
@@ -282,4 +285,62 @@ class LocateBHs:
         for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
             os.remove(self.dir_output + '%i/%i_blackholes.hdf5' % (snap, snap))
 
+        return
+
+
+class LocateBHs_Odyssey(LocateBHs):
+
+    def download_snapshot_files(self, snap):
+        print("\t`download_snapshot_files` is not required on Odyssey")
+        return
+
+    def download_groupcat_header_file(self, snap):
+        print("\t`download_groupcat_header_file` is not required on Odyssey")
+        return
+
+    def populate_bh_dict(self, snap):
+        import illpy
+        from illpy_lib.subhalos import particle_hosts
+
+        # Load host subhalo information for all BHs in this snapshot
+        print("Loading BH hosts data for snapshot '{}'".format(snap))
+        bh_hosts = particle_hosts.load_bh_hosts_snap(self.ill_run, snap)
+
+        # Only look at BH that have a subhhalo (those without have value '-1')
+        goods = (bh_hosts['bh_subhalos'] >= 0)
+        bh_subhalos = bh_hosts['bh_subhalos'][goods]
+        # bh_ids = bh_hosts['bh_ids'][goods]
+        del bh_hosts
+
+        # Load all BHs in this snapshot
+        keys = list(self.bhs_dict.keys())
+        keys.pop(keys.index('Snapshot'))
+        keys.pop(keys.index('Subhalo'))
+        print("Loading all BH from snapshot '{}'".format(snap))
+        snap_bhs = illpy.snapshot.loadSubset(self.dir_input, snap, ILL_BH_PART_TYPE, fields=keys)
+
+        '''
+        length = len(check_bhs_in_sub['ParticleIDs'][:])
+        self.bhs_dict['Subhalo']['values'].append(np.full((length, ), sub, dtype=int))
+        self.bhs_dict['Snapshot']['values'].append(np.full((length, ), snap, dtype=int))
+
+        for name in self.bhs_dict:
+            if name == 'Subhalo' or name == 'Snapshot':
+                continue
+            self.bhs_dict[name]['values'].append(check_bhs_in_sub[name])
+        '''
+
+        length = np.count_nonzero(goods)
+        self.bhs_dict['Subhalo']['values'].append(bh_subhalos)
+        self.bhs_dict['Snapshot']['values'].append(np.full((length, ), snap, dtype=int))
+
+        for name in self.bhs_dict:
+            if name in ['Subhalo', 'Snapshot']:
+                continue
+            self.bhs_dict[name]['values'].append(snap_bhs[name][goods])
+
+        return
+
+    def delete_snapshot_files(self, snap):
+        print("\t`delete_snapshot_files` is not required on Odyssey")
         return
