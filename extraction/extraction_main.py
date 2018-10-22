@@ -306,11 +306,11 @@ class MainProcess_Odyssey(MainProcess):
     LocateBHs = find_bhs.LocateBHs_Odyssey
 
     def sublink_extraction(self):
-        print("`sublink_extraction` is not needed on Odyssey")
+        print("\t`sublink_extraction` is not needed on Odyssey")
         return
 
     def find_sublink_indices(self):
-        print("WARNING: skipping `find_sublink_indices` on Odyssey!")
+        print("\tWARNING: skipping `find_sublink_indices` on Odyssey!")
         return
 
 
@@ -353,7 +353,7 @@ def main():
     else:
         Main_Process = MainProcess
 
-    main_process = Main_Process(args['dir_output'], args['dir_input'])
+    main_process = Main_Process(args['dir_output'], dir_input=args['dir_input'])
     for key in keys:
         if args[key]:
             print("Running '{}'".format(key))
