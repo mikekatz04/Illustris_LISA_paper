@@ -5,16 +5,18 @@ This file controls the Illustris black hole extraction and filtering process.
 import os
 import argparse
 
-from utils.prepare_sublink_trees import PrepSublink
-from utils.get_group_subs import GetGroupSubs
-from utils.find_sublink_indices import SublinkIndexFind
-from utils.find_bhs import LocateBHs
-from utils.sub_partIDs_in_mergs import SubPartIDs
-from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
-from utils.get_subhalos_for_download import FindSubhalosForSearch
-from utils.download_needed import DownloadNeeded
-from utils.density_vel_disp_of_subs import DensityProfVelDisp
-from utils.create_final_data import CreateFinalDataset
+# from utils.prepare_sublink_trees import PrepSublink
+# from utils.get_group_subs import GetGroupSubs
+# from utils.find_sublink_indices import SublinkIndexFind
+# from utils.find_bhs import LocateBHs
+# from utils.sub_partIDs_in_mergs import SubPartIDs
+# from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
+# from utils.get_subhalos_for_download import FindSubhalosForSearch
+# from utils.download_needed import DownloadNeeded
+# from utils.density_vel_disp_of_subs import DensityProfVelDisp
+# from utils.create_final_data import CreateFinalDataset
+
+from utils import prepare_sublink_trees, get_group_subs
 
 
 class MainProcess:
@@ -22,7 +24,7 @@ class MainProcess:
 	MainProcess contains and runs each major piece associated with the Illustris black hole extraction and filtering process.
 
 		attributes:
-			:param	directory - (str) - directory to work in
+			:param	dir_output - (str) - dir_output to work in
 
 		methods:
 			sublink_extraction
@@ -37,14 +39,23 @@ class MainProcess:
 			create_final_data
 	"""
 
-	def __init__(self, directory):
-		self.directory = directory
+	PrepSublink = prepare_sublink_trees.PrepSublink
+	GetGroupSubs = get_group_subs.GetGroupSubs
 
-		try:
-			os.listdir(directory)
+	def __init__(self, dir_output, dir_input=None):
+		self.dir_input = dir_input
+		self.dir_output = dir_output
 
-		except FileNotFoundError:
-			os.mkdir(directory)
+		if not os.path.isdir(dir_input):
+			raise RuntimeError("Input dir_output '{}' does not exist!".format(dir_input))
+
+		if not os.path.isdir(dir_output):
+			if os.path.exists(dir_output):
+				raise RuntimeError("Output '{}' exists but is not dir_output!".format(dir_output))
+
+			os.mkdir(dir_output)
+
+			return
 
 	def sublink_extraction(self):
 		"""
@@ -56,11 +67,11 @@ class MainProcess:
 		prep_sublink_kwargs = {
 			'num_files': 2,
 			'keys': ['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass', 'SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID', 'SubhaloSFR'],
-			'directory': self.directory,
+			'dir_output': self.dir_output,
 			'ill_run': 3,
 		}
 
-		prep_sublink = PrepSublink(**prep_sublink_kwargs)
+		prep_sublink = self.PrepSublink(**prep_sublink_kwargs)
 		if prep_sublink.needed:
 			prep_sublink.download_and_convert_to_short()
 			prep_sublink.combine_sublink_shorts()
@@ -81,10 +92,11 @@ class MainProcess:
 			'snaps_to_skip': [53, 55],
 			'additional_keys': ['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'],
 			'ill_run': 3,
-			'directory': self.directory
+			'dir_output': self.dir_output,
+			'dir_input': self.dir_input
 		}
 
-		get_groupcat = GetGroupSubs(**get_group_subs_kwargs)
+		get_groupcat = self.GetGroupSubs(**get_group_subs_kwargs)
 		if get_groupcat.needed:
 			get_groupcat.download_and_add_file_info()
 
@@ -101,7 +113,7 @@ class MainProcess:
 
 		find_sublink_indices_kwargs = {
 			'num_files': 6,
-			'directory': self.directory
+			'dir_output': self.dir_output
 		}
 
 		sublink_indices = SublinkIndexFind(**find_sublink_indices_kwargs)
@@ -121,7 +133,7 @@ class MainProcess:
 
 		find_bhs_kwargs = {
 			'ill_run': 3,
-			'directory': self.directory,
+			'dir_output': self.dir_output,
 			'num_chunk_files_per_snapshot': 512,
 			'num_groupcat_files': 1,
 			'first_snap_with_bhs': 30,
@@ -147,7 +159,7 @@ class MainProcess:
 
 		sub_partIDs_in_mergs_kwargs = {
 			'ill_run': 3,
-			'directory': self.directory,
+			'dir_output': self.dir_output,
 			'run_details': False,
 		}
 
@@ -181,7 +193,7 @@ class MainProcess:
 		print('\nStart finding good/bad mergers.')
 
 		find_bad_black_holes_kwargs = {
-			'directory': self.directory
+			'dir_output': self.dir_output
 		}
 
 		bad_bhs = FindBadBlackHoles(**find_bad_black_holes_kwargs)
@@ -189,7 +201,7 @@ class MainProcess:
 			bad_bhs.search_bad_black_holes()
 
 		test_good_bad_mergers_kwargs = {
-			'directory': self.directory
+			'dir_output': self.dir_output
 		}
 
 		good_or_bad_mergers = TestGoodBadMergers(**test_good_bad_mergers_kwargs)
@@ -207,7 +219,7 @@ class MainProcess:
 		print('\nStart gathering subhalos for download.')
 
 		get_subhalos_for_download_kwargs = {
-			'directory': self.directory,
+			'dir_output': self.dir_output,
 			'skip_snaps': [53, 55],
 			'use_second_sub_back': False,
 		}
@@ -228,7 +240,7 @@ class MainProcess:
 		print('\nStart downloading subhalos.')
 
 		download_needed_kwargs = {
-			'directory': self.directory,
+			'dir_output': self.dir_output,
 			'ill_run': 1,
 		}
 
@@ -248,7 +260,7 @@ class MainProcess:
 		print('\nStart calculating profiles and dispersions.')
 
 		density_vel_disp_of_subs_kwargs = {
-			'directory': self.directory,
+			'dir_output': self.dir_output,
 		}
 
 		dens_vel = DensityProfVelDisp(**density_vel_disp_of_subs_kwargs)
@@ -269,7 +281,7 @@ class MainProcess:
 		print('\nStart generating final dataset.')
 
 		create_final_data_kwargs = {
-			'directory': self.directory,
+			'dir_output': self.dir_output,
 		}
 
 		final_data = CreateFinalDataset(**create_final_data_kwargs)
@@ -283,13 +295,25 @@ class MainProcess:
 		return
 
 
+class MainProcess_Odyssey(MainProcess):
+
+	GetGroupSubs = get_group_subs.GetGroupSubs_Odyssey
+
+	def sublink_extraction(self):
+		print("`sublink_extraction` is not needed on Odyssey")
+		return
+
+
 def main():
 
 	# default is to run the whole thing
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--all", action="store_true")
-	parser.add_argument("--directory", type=str, default='./extraction_files/')
+	parser.add_argument("--odyssey", action="store_true", default=False)
+	parser.add_argument("--dir_output", type=str, default='./extraction_files/')
+	parser.add_argument("--dir_intput", type=str, default=None)
+
 	parser.add_argument("--sublink_extraction", action="store_true")
 	parser.add_argument("--get_group_subs", action="store_true")
 	parser.add_argument("--find_sublink_indices", action="store_true")
@@ -314,7 +338,12 @@ def main():
 			if args[key]:
 				print('Running', key)
 
-	main_process = MainProcess(args['directory'])
+	if args['odyssey']:
+		Main_Process = MainProcess_Odyssey
+	else:
+		Main_Process = MainProcess
+
+	main_process = Main_Process(args['dir_output'], args['dir_input'])
 	for key in keys:
 		if args[key]:
 			getattr(main_process, key)()

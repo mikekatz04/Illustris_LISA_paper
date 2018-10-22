@@ -17,7 +17,7 @@ class TestGoodBadMergers:
 		TestGoodBadMergers tests whether either constituent exists in the simulation for 1 or less snapshots. This only applies to black holes less than 10^6. The algorithms used here are not perfect and can let a few of these slip by. Therefore, if a black hole is larger than 10^6, it is considered good no matter how long its ParticleID has existed. (We assume if it is larger than 10^6, it has been around longer than 2 snapshots.)
 
 		attributes:
-			:param	directory - (str) - directory to work in
+			:param	dir_output - (str) - dir_output to work in
 
 			needed - (bool) - if this code needs to run
 
@@ -26,10 +26,10 @@ class TestGoodBadMergers:
 			search_bad_black_holes
 	"""
 
-	def __init__(self, directory):
-		self.directory = directory
+	def __init__(self, dir_output):
+		self.dir_output = dir_output
 
-		if 'good_mergers.txt' in os.listdir(self.directory):
+		if 'good_mergers.txt' in os.listdir(self.dir_output):
 			self.needed = False
 
 		else:
@@ -40,7 +40,7 @@ class TestGoodBadMergers:
 		Test if the mergers are good or bad. Criterion is stated in the description of the TestGoodBadMergers class object.
 		"""
 
-		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'r') as f:
+		with h5py.File(self.dir_output + 'bhs_all_new.hdf5', 'r') as f:
 
 			# get the unique ides in the all bhs dataset, as well as their first appearence (index) and count of appearences (counts)
 			unique_part_ids_all, index, counts = np.unique(f['ParticleIDs_new'][:][::-1], return_counts=True, return_index=True)
@@ -60,7 +60,7 @@ class TestGoodBadMergers:
 		good = []
 
 		# read in merger data
-		with h5py.File(self.directory + 'bhs_mergers_new.hdf5', 'r') as f_merg:
+		with h5py.File(self.dir_output + 'bhs_mergers_new.hdf5', 'r') as f_merg:
 			time = f_merg['time'][:]
 			mass_in_new = f_merg['mass_in_new'][:]
 			mass_out_new = f_merg['mass_out_new'][:]
@@ -83,7 +83,7 @@ class TestGoodBadMergers:
 					good.append(m)
 
 		# read out
-		np.savetxt(self.directory + 'good_mergers.txt', np.array([np.array(good)]).T)
+		np.savetxt(self.dir_output + 'good_mergers.txt', np.array([np.array(good)]).T)
 		return
 
 
@@ -110,7 +110,7 @@ class FindBadBlackHoles:
 		step 5: add bad black holes to list and read out the data
 
 		attributes:
-			:param	directory - (str) - directory to work in
+			:param	dir_output - (str) - dir_output to work in
 
 			needed - (bool) - if this code needs to run
 
@@ -121,10 +121,10 @@ class FindBadBlackHoles:
 
 		MAIN JOB: locate bad black holes resulting from fly-by encounters of host galaxies
 	"""
-	def __init__(self, directory='./extraction_files'):
-		self.directory = directory
+	def __init__(self, dir_output='./extraction_files'):
+		self.dir_output = dir_output
 
-		if 'bad_black_holes.txt' in os.listdir(self.directory):
+		if 'bad_black_holes.txt' in os.listdir(self.dir_output):
 			self.needed = False
 		else:
 			self.needed = True
@@ -135,7 +135,7 @@ class FindBadBlackHoles:
 		"""
 
 		# get initial information and calculate raw subhalo id number according to Illustris convention
-		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'r') as f_all_bhs:
+		with h5py.File(self.dir_output + 'bhs_all_new.hdf5', 'r') as f_all_bhs:
 			part_ids_all = f_all_bhs['ParticleIDs_new'][:]
 			snaps_all = f_all_bhs['Snapshot'][:]
 			subhalos_all = f_all_bhs['Subhalo'][:]
@@ -164,7 +164,7 @@ class FindBadBlackHoles:
 
 		# open the sublink tree file. Keep it open because it is
 		# too much information to store it all in memory
-		f_sublink = h5py.File(self.directory + 'sublink_short.hdf5', 'r')
+		f_sublink = h5py.File(self.dir_output + 'sublink_short.hdf5', 'r')
 
 		# get the raw IDs from sublink and sort them
 		subID_raw_sublink = np.asarray(f_sublink['SubfindID'][:310600757] + f_sublink['SnapNum'][:310600757]*1e12, dtype=np.int64)
@@ -210,6 +210,6 @@ class FindBadBlackHoles:
 		# read out
 		bad_arr = np.asarray(bad, dtype=[('id', np.dtype(np.uint64)), ('mass', np.dtype(float)), ('snap', np.dtype(np.int32))])
 
-		np.savetxt(self.directory + 'bad_black_holes.txt', bad_arr)
+		np.savetxt(self.dir_output + 'bad_black_holes.txt', bad_arr)
 		f_sublink.close()
 		return

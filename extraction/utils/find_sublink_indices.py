@@ -11,7 +11,7 @@ class SublinkIndexFind:
 
 		attributes:
 			:param	num_files - (int) - number of ``sublink_short_i.hdf5`` files
-			:param	directory - (str) - directory to store final files in
+			:param	dir_output - (str) - dir_output to store final files in
 
 			needed - (bool) - does this code need to run
 
@@ -19,12 +19,12 @@ class SublinkIndexFind:
 			find_indices
 	"""
 
-	def __init__(self, num_files=6, directory='./extraction_files'):
-		self.directory = directory
+	def __init__(self, num_files=6, dir_output='./extraction_files'):
+		self.dir_output = dir_output
 		self.num_files = num_files
 
 		# check if needed
-		with h5py.File(self.directory + 'sublink_short.hdf5', 'r') as f:
+		with h5py.File(self.dir_output + 'sublink_short.hdf5', 'r') as f:
 			keys = list(f)
 			if 'Descendant_index' in keys:
 				print('Descendant indices already added to sublink_short.')
@@ -42,7 +42,7 @@ class SublinkIndexFind:
 		# initialize last index for a unique tree
 		last_ind = 0
 		for j in range(self.num_files):
-			with h5py.File(self.directory + 'sublink_short_%i.hdf5' % j, 'r') as f:
+			with h5py.File(self.dir_output + 'sublink_short_%i.hdf5' % j, 'r') as f:
 
 				# find unique trees in this file
 				uni, inds = np.unique(f['TreeID'][:], return_index=True)
@@ -79,7 +79,7 @@ class SublinkIndexFind:
 		# concatenate index lists and append to full ``sublink_short.hdf5``
 		desc_inds = np.concatenate(desc_inds)
 		subhaloID_inds = np.concatenate(subhaloID_inds)
-		with h5py.File(self.directory + 'sublink_short.hdf5', 'a') as f:
+		with h5py.File(self.dir_output + 'sublink_short.hdf5', 'a') as f:
 			print('start descendants append')
 			f.create_dataset('Descendant_index', data=desc_inds, dtype=desc_inds.dtype.name, chunks=True, compression='gzip', compression_opts=9)
 
