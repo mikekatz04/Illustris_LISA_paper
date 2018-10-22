@@ -8,6 +8,7 @@ import argparse
 # from utils.prepare_sublink_trees import PrepSublink
 # from utils.get_group_subs import GetGroupSubs
 # from utils.find_sublink_indices import SublinkIndexFind
+
 # from utils.find_bhs import LocateBHs
 # from utils.sub_partIDs_in_mergs import SubPartIDs
 # from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
@@ -16,7 +17,7 @@ import argparse
 # from utils.density_vel_disp_of_subs import DensityProfVelDisp
 # from utils.create_final_data import CreateFinalDataset
 
-from utils import prepare_sublink_trees, get_group_subs
+from utils import prepare_sublink_trees, get_group_subs, find_sublink_indices, find_bhs
 
 
 class MainProcess:
@@ -41,6 +42,8 @@ class MainProcess:
 
     PrepSublink = prepare_sublink_trees.PrepSublink
     GetGroupSubs = get_group_subs.GetGroupSubs
+    SublinkIndexFind = find_sublink_indices.SublinkIndexFind
+    LocateBHs = find_bhs.LocateBHs
 
     def __init__(self, dir_output, dir_input=None):
         print(self.__class__.__name__)
@@ -117,7 +120,7 @@ class MainProcess:
             'dir_output': self.dir_output
         }
 
-        sublink_indices = SublinkIndexFind(**find_sublink_indices_kwargs)
+        sublink_indices = self.SublinkIndexFind(**find_sublink_indices_kwargs)
         if sublink_indices.needed:
             sublink_indices.find_indices()
 
@@ -135,6 +138,7 @@ class MainProcess:
         find_bhs_kwargs = {
             'ill_run': 3,
             'dir_output': self.dir_output,
+            'dir_input': self.dir_input,
             'num_chunk_files_per_snapshot': 512,
             'num_groupcat_files': 1,
             'first_snap_with_bhs': 30,
@@ -142,7 +146,7 @@ class MainProcess:
             'max_snap': 135
         }
 
-        get_bhs = LocateBHs(**find_bhs_kwargs)
+        get_bhs = self.LocateBHs(**find_bhs_kwargs)
         if get_bhs.needed:
             get_bhs.download_bhs_all_snapshots()
             get_bhs.combine_black_hole_files()
@@ -299,9 +303,14 @@ class MainProcess:
 class MainProcess_Odyssey(MainProcess):
 
     GetGroupSubs = get_group_subs.GetGroupSubs_Odyssey
+    LocateBHs = find_bhs.LocateBHs_Odyssey
 
     def sublink_extraction(self):
         print("`sublink_extraction` is not needed on Odyssey")
+        return
+
+    def find_sublink_indices(self):
+        print("WARNING: skipping `find_sublink_indices` on Odyssey!")
         return
 
 
@@ -327,7 +336,7 @@ def main():
 
     args = vars(parser.parse_args())
 
-    keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'gather_black_hole_information', 'find_bhs', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']
+    keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'find_bhs', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']
 
     if True not in list(args.values()) or args['all']:
         print('Running all functions')
