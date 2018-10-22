@@ -7,9 +7,10 @@ import h5py
 import os
 
 from utils.generalfuncs import get
+from utils import SubProcess
 
 
-class PrepSublink:
+class PrepSublink(SubProcess):
     """
     PrepSublink downloads the necessary sublink files from the Illustris server. It then moves the classes we are interested in to a separate file to preserve memory. It then deletes the original file.
 
@@ -27,11 +28,10 @@ class PrepSublink:
             combine_sublink_shorts
     """
 
-    def __init__(self, num_files=6, keys=['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass', 'SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID', 'SubhaloSFR'], dir_output='./extraction_files/', ill_run=1):
+    def __init__(self, main_proc, num_files=6, keys=['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass', 'SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID', 'SubhaloSFR']):
+        super().__init__(main_proc)
 
-        self.base_url = "http: //www.illustris-project.org/api/Illustris-%i/" % ill_run
-
-        self.num_files, self.keys, self.dir_output = num_files, keys, dir_output
+        self.num_files, self.keys = num_files, keys
 
         num_files_complete = 0
         for num in range(self.num_files):

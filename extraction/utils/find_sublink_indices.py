@@ -4,8 +4,10 @@ MAIN PURPOSE: append indices for SubhaloID and DescendantID to ``sublink_short.h
 import numpy as np
 import h5py
 
+from utils import SubProcess
 
-class SublinkIndexFind:
+
+class SublinkIndexFind(SubProcess):
     """
     SublinkIndexFind finds the associated index in the these datasets of the SubhaloID and corresponding DescendantID. These indices represent the row of the subhaloID which are done in numerical order and in line with the sublink tree they belong to. Examine the sublink datasets to see this trend. This makes finding descendants much easier. Right now it is only set to do the first 6 files because beyond that, there are no black holes present. Need to use ``sublink_short_i.hdf5`` because of time contraints of searching the hole data set.
 
@@ -19,7 +21,8 @@ class SublinkIndexFind:
             find_indices
     """
 
-    def __init__(self, num_files=6, dir_output='./extraction_files'):
+    def __init__(self, main_proc, num_files=6, dir_output='./extraction_files'):
+        super().__init__(main_proc)
         self.dir_output = dir_output
         self.num_files = num_files
 
