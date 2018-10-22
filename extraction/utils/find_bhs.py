@@ -119,6 +119,7 @@ class LocateBHs(SubProcess):
         for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
             if snap in self.skip_snaps:
                 print('Skipped snapshot', snap)
+                continue
 
             fname = self.snapshot_bh_fname(snap)
             if os.path.exists(fname):
@@ -336,9 +337,20 @@ class LocateBHs_Odyssey(LocateBHs):
         bh_hosts = self.bh_hosts['{:03d}'.format(snap)]
 
         # Only look at BH that have a subhhalo (those without have value '-1')
-        goods = (bh_hosts['bh_subhalos'] >= 0)
+        #    NOTE: some of the files seem to have binary keys... look out for that
+        try:
+            key = 'bh_subhalos'
+            goods = (bh_hosts[key] >= 0)
+        except KeyError:
+            print("keys = ", bh_hosts.keys())
+            try:
+                key = b'bh_subhalos'
+                goods = (bh_hosts[key] >= 0)
+            except KeyError:
+                raise
+
         length = np.count_nonzero(goods)
-        bh_subhalos = bh_hosts['bh_subhalos'][goods]
+        bh_subhalos = bh_hosts[key][goods]
         # bh_ids = bh_hosts['bh_ids'][goods]
         print("\t{:.4e}/{:.4e} = {:.4f} good BHs".format(length, goods.size, length/goods.size))
         del bh_hosts
