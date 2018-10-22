@@ -4,6 +4,7 @@ MAIN PURPOSE: gather subhalos with black holes and create ``subs_with_bhs.hdf5``
 import h5py
 import os
 import numpy as np
+import tqdm
 
 from utils.generalfuncs import get
 
@@ -71,7 +72,8 @@ class GetGroupSubs:
         # initialize output dict
         out = {key: [] for key in self.keys}
 
-        for snap in np.arange(self.start_snap, 136):
+        # for snap in np.arange(self.start_snap, 136):
+        for snap in tqdm.trange(self.start_snap, 136):
 
             # skip bad snapshots (53, 55 in ill1)
             if snap in self.snaps_to_skip:
@@ -83,38 +85,6 @@ class GetGroupSubs:
                 with h5py.File(self.dir_output + 'subs_with_bhs.hdf5', 'r') as f_out:
                     for key in self.keys:
                         out[key] = [f_out[key][:]]
-
-            # download next snapshot group catalog files
-            '''
-            base = self.baseurl + '-%i/' % snap
-            print('start download of snapshot', snap)
-            for key in self.keys:
-                # Get these quantities below
-                if key == 'SubhaloID' or key == 'Snapshot':
-                    continue
-
-                # download groupcat in quantity desired
-                fp = get(base + '?Subhalo=' + key)
-
-                # gather data from this dataset
-                with h5py.File(fp, 'r') as f:
-                    # Run through SubgaloLenType first.
-                    # This keeps only subhalos with black holes in them.
-                    # We add subhalo and snapshot info with this.
-                    if key == 'SubhaloLenType':
-                        trans = f['Subhalo'][key][:]
-                        inds_keep = np.where(trans[:, 5] > 0)[0]
-                        out['SubhaloID'].append(inds_keep)
-                        out['Snapshot'].append(np.full((len(inds_keep)), snap))
-
-                    # add quantity to output dict
-                    out[key].append(f['Subhalo'][key][:][inds_keep])
-
-                # remove downloaded file
-                os.remove(fp)
-
-            print('end downloads', snap)
-            '''
 
             # Load data for this snapshot and add to dictionary of all snapshots
             out_snap = self.load_snap_subs_with_bhs(snap, self.keys)
@@ -131,7 +101,7 @@ class GetGroupSubs:
                     out[key] = np.concatenate(out[key])
                     f.create_dataset(key, data=out[key], dtype=out[key].dtype.name, chunks=True, compression='gzip', compression_opts=9)
 
-            print(snap, 'groupcat completed')
+            # print(snap, 'groupcat completed')
 
         # if all files have been dowloaded, delete backup file
         if snap == 135:
@@ -185,9 +155,15 @@ class GetGroupSubs_Odyssey(GetGroupSubs):
         # out_snap = {key: [] for key in self.keys}
         out_snap = {}
 
-        print("loading subhalos from groupcat for snap {:d}".format(snap))
+        # print("loading subhalos from groupcat for snap {:d}".format(snap))
+        
+        # Remove keys not present in raw groupcat (on Odyssey)
+        keys = list(keys)
+        keys.pop(keys.index('Snapshot'))
+        keys.pop(keys.index('SubhaloID'))
+
         subhalos = illpy.groupcat.loadSubhalos(self.dir_input, snap, fields=keys)
-        print("keys = ", list(subhalos.keys()))
+        # print("Loaded groupcat subhalo keys = ", list(subhalos.keys()))
 
         for key in self.keys:
             # Get these quantities below
@@ -198,16 +174,17 @@ class GetGroupSubs_Odyssey(GetGroupSubs):
             # This keeps only subhalos with black holes in them.
             # We add subhalo and snapshot info with this.
             if key == 'SubhaloLenType':
-                trans = subhalos['Subhalo'][key][:]
+                # trans = subhalos['Subhalo'][key][:]    # API specific
+                trans = subhalos[key][:]
                 inds_keep = np.where(trans[:, 5] > 0)[0]
-                # out_snap['SubhaloID'].append(inds_keep)
-                # out_snap['Snapshot'].append(np.full((len(inds_keep)), snap))
+                # out_snap['SubhaloID'].append(inds_keep)    # API specific
+                # out_snap['Snapshot'].append(np.full((len(inds_keep)), snap))    # API specific
                 out_snap['SubhaloID'] = inds_keep
                 out_snap['Snapshot'] = np.full((len(inds_keep)), snap)
 
             # add quantity to output dict
-            # out_snap[key].append(f['Subhalo'][key][:][inds_keep])
-            out_snap[key] = subhalos['Subhalo'][key][:][inds_keep]
+            # out_snap[key].append(f['Subhalo'][key][:][inds_keep])    # API specific
+            out_snap[key] = subhalos[key][:][inds_keep]
 
-        print("\tsnap {} done".format(snap))
+        # print("\tsnap {} done".format(snap))
         return out_snap
