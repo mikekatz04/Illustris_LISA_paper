@@ -24,7 +24,7 @@ class DensityProfVelDisp:
 		Note: when downloading all the subhalos, some downloads may not have been perfect meaning the files will not open. This should be a very small number. If this is the case, the code will error and stop running. you can see the last subhalo that the code tried to open. Use `download_single.py` for these files.
 
 		attributes:
-			:param directory - (str) - directory to work in
+			:param dir_output - (str) - dir_output to work in
 
 		methods:
 			find_fit
@@ -34,10 +34,10 @@ class DensityProfVelDisp:
 
 	"""
 
-	def __init__(self, directory):
-		self.directory = directory
+	def __init__(self, dir_output):
+		self.dir_output = dir_output
 
-		if 'density_profiles.txt' in os.listdir(self.directory) and 'velocity_dispersions.txt' in os.listdir(self.directory):
+		if 'density_profiles.txt' in os.listdir(self.dir_output) and 'velocity_dispersions.txt' in os.listdir(self.dir_output):
 			self.needed = False
 
 		else:

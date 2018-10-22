@@ -21,7 +21,7 @@ class LocateBHs:
 		attributes:
 
 			:param	ill_run - (int) - which illustris run
-			:param 	directory - (string) - base directory
+			:param 	dir_output - (string) - base dir_output
 			:param	num_chunk_files_per_snapshot - (int) - number of chunk files per snapshot
 			:param	num_groupcat_files - (int) - number of group files needed at each snapshot for offset information
 			:param	first_snap_with_bhs - (int) - first snapshot where black holes exist
@@ -48,9 +48,9 @@ class LocateBHs:
 			delet_snap_bh_files
 	"""
 
-	def __init__(self, ill_run=1, directory='./extraction_files/', num_chunk_files_per_snapshot=512, num_groupcat_files=1, first_snap_with_bhs=30, skip_snaps=[53, 55], max_snap=135):
+	def __init__(self, ill_run=1, dir_output='./extraction_files/', num_chunk_files_per_snapshot=512, num_groupcat_files=1, first_snap_with_bhs=30, skip_snaps=[53, 55], max_snap=135):
 
-		self.directory = directory
+		self.dir_output = dir_output
 		self.num_chunk_files_per_snapshot = num_chunk_files_per_snapshot
 		self.num_groupcat_files = num_groupcat_files
 		self.first_snap_with_bhs = first_snap_with_bhs
@@ -68,7 +68,7 @@ class LocateBHs:
 		self.reset_black_holes_dict()
 
 		# check if this process is needed
-		if 'bhs_all_new.hdf5' in os.listdir(self.directory):
+		if 'bhs_all_new.hdf5' in os.listdir(self.dir_output):
 			self.needed = False
 
 		else:
@@ -116,7 +116,7 @@ class LocateBHs:
 			if snap in self.skip_snaps:
 				print('Skipped snapshot', snap)
 
-			if '%i_blackholes.hdf5' % snap in os.listdir(self.directory):
+			if '%i_blackholes.hdf5' % snap in os.listdir(self.dir_output):
 				continue
 
 			self.download_bhs_for_snapshot(snap)
@@ -127,8 +127,8 @@ class LocateBHs:
 		This downloads black holes for a specific snapshot. First, the snapshot and group catalog chunk files are needed. To do this a specific file structure is needed. See http://www.illustris-project.org/data/docs/scripts/ for info.
 		"""
 
-		if '%i/' % snap not in os.listdir(self.directory):
-			os.mkdir(self.directory + '%i/' % snap)
+		if '%i/' % snap not in os.listdir(self.dir_output):
+			os.mkdir(self.dir_output + '%i/' % snap)
 
 		print('Begin download snapshot file black hole info for snapshot', snap)
 		self.download_snapshot_files(snap)
@@ -151,14 +151,14 @@ class LocateBHs:
 		Download all of the chunk files for the current snapshot. Special file structure is needed. This only downloads the black hole information for memory conservation.
 		"""
 
-		if 'snapdir_%03d/' % snap not in os.listdir(self.directory + '%i/' % snap):
-			os.mkdir(self.directory + '%i/' % snap + 'snapdir_%03d/' % snap)
+		if 'snapdir_%03d/' % snap not in os.listdir(self.dir_output + '%i/' % snap):
+			os.mkdir(self.dir_output + '%i/' % snap + 'snapdir_%03d/' % snap)
 
 		for chunk_num in range(self.num_chunk_files_per_snapshot):
-			if 'snap_%i.%i.hdf5' % (snap, chunk_num) in os.listdir(self.directory + '%i/' % snap + 'snapdir_%03d/' % snap):
+			if 'snap_%i.%i.hdf5' % (snap, chunk_num) in os.listdir(self.dir_output + '%i/' % snap + 'snapdir_%03d/' % snap):
 				continue
 			cutout = get(self.base_url + "files/snapshot-" + str(snap) + '.'  + str(chunk_num) + '.hdf5?bhs=all')
-			os.rename(cutout, self.directory + '%i/' % snap + 'snapdir_%03d/' % snap + cutout)
+			os.rename(cutout, self.dir_output + '%i/' % snap + 'snapdir_%03d/' % snap + cutout)
 			if chunk_num % 10 == 0:
 				print('Snapshot chunk', chunk_num, 'out of', self.num_chunk_files_per_snapshot, 'completed.')
 		return
@@ -168,14 +168,14 @@ class LocateBHs:
 		Download the group catalog files which act as header files for `snapshot.py` (http://www.illustris-project.org/data/docs/scripts/ for info on this script.) Usually the first group catalog file is all that is needed for black hole particle informationself.
 		"""
 
-		if 'groups_%03d/' % snap not in os.listdir(self.directory + '%i/' % snap):
-			os.mkdir(self.directory + '%i/' % snap + 'groups_%03d/' % snap)
+		if 'groups_%03d/' % snap not in os.listdir(self.dir_output + '%i/' % snap):
+			os.mkdir(self.dir_output + '%i/' % snap + 'groups_%03d/' % snap)
 
 		for chunk_num in range(self.num_groupcat_files):
-			if 'groups_%i.%i.hdf5' % (snap, chunk_num) in os.listdir(self.directory + '%i/' % snap + 'snapdir_%03d/' % snap):
+			if 'groups_%i.%i.hdf5' % (snap, chunk_num) in os.listdir(self.dir_output + '%i/' % snap + 'snapdir_%03d/' % snap):
 				continue
 			cutout = get(self.base_url + "files/groupcat-" + str(snap) + '.'  + str(chunk_num) + '.hdf5')
-			os.rename(cutout, self.directory + '%i/' % snap + 'groups_%03d/' % snap + cutout)
+			os.rename(cutout, self.dir_output + '%i/' % snap + 'groups_%03d/' % snap + cutout)
 			if chunk_num % 1 == 0:
 				print('Groupcat chunk', chunk_num, 'out of', self.num_chunk_files_per_snapshot, 'completed.')
 
@@ -191,7 +191,7 @@ class LocateBHs:
 		for sub in subs_to_look_in:
 
 			# load bh particle info from the snapshot folder using `snapshot.py`
-			check_bhs_in_sub = snapshot.loadSubhalo(self.directory + '%i/' % snap, snap, sub, 5, fields=None)
+			check_bhs_in_sub = snapshot.loadSubhalo(self.dir_output + '%i/' % snap, snap, sub, 5, fields=None)
 
 			# need length to fill values for subhalo and snapshot
 			length = len(check_bhs_in_sub['ParticleIDs'][:])
@@ -209,7 +209,7 @@ class LocateBHs:
 		"""
 		Concatenate the information in each list of the bh dict and then read them out to a file specific to the bhs in this snapshot.
 		"""
-		with h5py.File(self.directory + '%i/%i_blackholes.hdf5' % (snap, snap), 'w') as f:
+		with h5py.File(self.dir_output + '%i/%i_blackholes.hdf5' % (snap, snap), 'w') as f:
 			for name in self.bhs_dict:
 				output = np.concatenate(self.bhs_dict[name]['values'], axis=0)
 
@@ -229,14 +229,14 @@ class LocateBHs:
 		"""
 
 		# make sure black hole file is there!!!
-		if '%i_blackholes.hdf5' % (snap) not in os.listdir(self.directory + '%i/' % snap):
+		if '%i_blackholes.hdf5' % (snap) not in os.listdir(self.dir_output + '%i/' % snap):
 			raise Exception('About to delete files when completed file (%i_blackholes.hdf5) is not there.' % snap)
 
-		for f in os.listdir(self.directory + '%i/' % snap + 'snapdir_%03d/' % snap):
-			os.remove(self.directory + '%i/' % snap + 'snapdir_%03d/' % snap + f)
+		for f in os.listdir(self.dir_output + '%i/' % snap + 'snapdir_%03d/' % snap):
+			os.remove(self.dir_output + '%i/' % snap + 'snapdir_%03d/' % snap + f)
 
-		for f in os.listdir(self.directory + '%i/' % snap + 'groups_%03d/' % snap):
-			os.remove(self.directory + '%i/' % snap + 'groups_%03d/' % snap + f)
+		for f in os.listdir(self.dir_output + '%i/' % snap + 'groups_%03d/' % snap):
+			os.remove(self.dir_output + '%i/' % snap + 'groups_%03d/' % snap + f)
 
 		return
 
@@ -251,7 +251,7 @@ class LocateBHs:
 
 		# open snapshot specific files and populate dict
 		for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
-			with h5py.File(self.directory + '%i/%i_blackholes.hdf5' % (snap, snap), 'r') as f:
+			with h5py.File(self.dir_output + '%i/%i_blackholes.hdf5' % (snap, snap), 'r') as f:
 				for name in bhs_dict:
 					self.bhs_dict[name]['values'].append(f[name][:])
 
@@ -280,6 +280,6 @@ class LocateBHs:
 		"""
 
 		for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
-			os.remove(self.directory + '%i/%i_blackholes.hdf5' % (snap, snap))
+			os.remove(self.dir_output + '%i/%i_blackholes.hdf5' % (snap, snap))
 
 		return

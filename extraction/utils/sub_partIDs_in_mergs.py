@@ -15,7 +15,7 @@ class SubPartIDs:
 
 		attributes:
 			:param	ill_run - (int) - illustris run to use
-			:param	directory - (str) - directory to work out of
+			:param	dir_output - (str) - dir_output to work out of
 			:param  run_details - (bool) - run details catalog through this process. Default is False
 
 			mergers_needed - (bool) - need to sub ids in merger file
@@ -32,12 +32,12 @@ class SubPartIDs:
 			add_new_ids_to_details_file
 	"""
 
-	def __init__(self, ill_run=1, directory='./extraction_files/', run_details=False):
+	def __init__(self, ill_run=1, dir_output='./extraction_files/', run_details=False):
 		self.ill_run = ill_run
-		self.directory = directory
+		self.dir_output = dir_output
 
 		# see if the new columns are added and if the files exist
-		if 'bhs_mergers_new.hdf5' in os.listdir(self.directory):
+		if 'bhs_mergers_new.hdf5' in os.listdir(self.dir_output):
 			with h5py.File('bhs_mergers_new', 'r') as f:
 				if 'mass_in_new' in list(f):
 					self.mergers_needed = False
@@ -53,7 +53,7 @@ class SubPartIDs:
 				self.all_needed = False
 
 		if run_details:
-			if 'bhs_details_new.hdf5' in os.listdir(self.directory):
+			if 'bhs_details_new.hdf5' in os.listdir(self.dir_output):
 				with h5py.File('bhs_details_new', 'r') as f:
 					if 'id_new' in list(f):
 						self.details_needed = False
@@ -69,7 +69,7 @@ class SubPartIDs:
 		Use `get` to download the original black hole merger file from the Illustris website.
 		"""
 
-		if 'blackhole_mergers.hdf5' % self.ill_run in os.listdir(self.directory):
+		if 'blackhole_mergers.hdf5' % self.ill_run in os.listdir(self.dir_output):
 			print('blackhole_mergers.hdf5 already downloaded.' % self.ill_run)
 			return
 
@@ -77,8 +77,8 @@ class SubPartIDs:
 
 		fp = get('http://www.illustris-project.org/api/Illustris-%i/files/blackhole_mergers.hdf5' % self.ill_run)
 
-		# move and rename file in correct directory
-		os.rename(fp, self.directory + 'bhs_all_new.hdf5')
+		# move and rename file in correct dir_output
+		os.rename(fp, self.dir_output + 'bhs_all_new.hdf5')
 
 		print('blackhole_mergers-ILL%i.hdf5 -> finished download.' % self.ill_run)
 		return
@@ -89,10 +89,10 @@ class SubPartIDs:
 		"""
 
 		# download the original file if it is not in folder.
-		if 'bhs_mergers_new.hdf5' not in os.listdir(self.directory):
+		if 'bhs_mergers_new.hdf5' not in os.listdir(self.dir_output):
 			self.download_original_bh_merger_file()
 
-		with h5py.File(self.directory + 'bhs_mergers_new.hdf5', 'r') as f_merg:
+		with h5py.File(self.dir_output + 'bhs_mergers_new.hdf5', 'r') as f_merg:
 
 			# get original quantities
 			mass_in = f_merg['mass_in'][:]
@@ -130,7 +130,7 @@ class SubPartIDs:
 		Fix the mergers in ``bhs_mergers_new.hdf5``.
 		"""
 		# get original data
-		with h5py.File(self.directory + 'bhs_mergers_new.hdf5', 'r') as f_merg:
+		with h5py.File(self.dir_output + 'bhs_mergers_new.hdf5', 'r') as f_merg:
 			mass_in = f_merg['mass_in'][:]
 			mass_out = f_merg['mass_out'][:]
 			time = f_merg['time'][:]
@@ -181,7 +181,7 @@ class SubPartIDs:
 			print(i)
 
 		# read out
-		with h5py.File(self.directory + 'bhs_mergers_new.hdf5', 'a') as f_merg:
+		with h5py.File(self.dir_output + 'bhs_mergers_new.hdf5', 'a') as f_merg:
 			f_merg['id_in_new'] = partIDs[:, 0]
 			f_merg['mass_in_new'] = masses[:, 0]
 
@@ -196,7 +196,7 @@ class SubPartIDs:
 		"""
 
 		# original data
-		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'r') as f_all:
+		with h5py.File(self.dir_output + 'bhs_all_new.hdf5', 'r') as f_all:
 			partIDs_all = f_all['ParticleIDs'][:]
 			snap_all = f_all['Snapshot'][:]
 
@@ -220,7 +220,7 @@ class SubPartIDs:
 			print(i)
 
 		# read out
-		with h5py.File(self.directory + 'bhs_all_new.hdf5', 'a') as f_all:
+		with h5py.File(self.dir_output + 'bhs_all_new.hdf5', 'a') as f_all:
 			f_all.create_dataset('ParticleIDs_new', data=partIDs_all, dtype=partIDs_all.dtype.name, chunks=True, compression='gzip', compression_opts=9)
 
 		return
@@ -230,13 +230,13 @@ class SubPartIDs:
 		Download blackhole details file from Illustris website.
 		"""
 
-		if 'blackhole_details-ILL%i.hdf5' % self.ill_run in os.listdir('self.directory'):
+		if 'blackhole_details-ILL%i.hdf5' % self.ill_run in os.listdir('self.dir_output'):
 			print('blackhole_details-ILL%i.hdf5 already downloaded.' % self.ill_run)
 			return
 
 		print('blackhole_details-ILL%i.hdf5 -> beginning download.' % self.ill_run)
 		fp = get('http://www.illustris-project.org/api/Illustris-%i/files/blackhole_details.hdf5' % self.ill_run)
-		os.rename(fp, self.directory + 'bhs_details_new.hdf5')
+		os.rename(fp, self.dir_output + 'bhs_details_new.hdf5')
 		print('blackhole_details-ILL%i.hdf5 -> finished download.' % self.ill_run)
 		return
 
@@ -246,11 +246,11 @@ class SubPartIDs:
 		"""
 
 		# download the original file if it is not in folder.
-		if 'bhs_details_new.hdf5' not in os.listdir(self.directory):
+		if 'bhs_details_new.hdf5' not in os.listdir(self.dir_output):
 			self.download_details_file()
 
 		# original data
-		with h5py.File(self.directory + 'bhs_details_new.hdf5', 'r') as f_dets:
+		with h5py.File(self.dir_output + 'bhs_details_new.hdf5', 'r') as f_dets:
 			partIDs_details = f_dets['id'][:]
 			time_details = f_dets['time'][:]
 
@@ -275,7 +275,7 @@ class SubPartIDs:
 			print(i)
 
 		# read out
-		with h5py.File(self.directory + 'bhs_details_new.hdf5', 'a') as f_dets_new:
+		with h5py.File(self.dir_output + 'bhs_details_new.hdf5', 'a') as f_dets_new:
 			f_dets_new.create_dataset('id_new', data=partIDs_details, dtype=partIDs_details.dtype.name, chunks=True, compression='gzip', compression_opts=9)
 
 		return

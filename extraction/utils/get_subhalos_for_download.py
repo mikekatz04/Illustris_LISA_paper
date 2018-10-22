@@ -20,7 +20,7 @@ class FindSubhalosForSearch:
 		If the mergers/subhalos pass this criteria, the subhalos are added to ``snaps_and_subs_needed.txt``.
 
 		attributes:
-			: param	directory - (str) - directory to work in
+			: param	dir_output - (str) - dir_output to work in
 			: param use_second_sub_back - (bool) - some merger constituent black holes exist in the same galaxy prior to merger. A value of true will look two snapshots back if this is the case. We did not use this in the paper.
 			: param skip_snaps - list of (int) - list of bad snapshots (53 and 55 in Illustris-1s)
 
@@ -33,12 +33,12 @@ class FindSubhalosForSearch:
 			find_subs_to_search
 	"""
 
-	def __init__(self, directory, use_second_sub_back=False, skip_snaps=[53, 55]):
-		self.directory = directory
+	def __init__(self, dir_output, use_second_sub_back=False, skip_snaps=[53, 55]):
+		self.dir_output = dir_output
 		self.use_second_sub_back = use_second_sub_back
 		self.skip_snaps = skip_snaps
 
-		if 'snaps_and_subs_needed.txt' in os.listdir(self.directory):
+		if 'snaps_and_subs_needed.txt' in os.listdir(self.dir_output):
 			self.needed = False
 
 		else:

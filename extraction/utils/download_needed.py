@@ -15,18 +15,18 @@ class DownloadNeeded:
 
 		THIS CODE DOES NOT CHECK IF IT IS NEEDED. THE USER MUST KNOW STATUS USING ``completed_snaps_and_subs.txt`` COMPARED TO ``snaps_and_subs_needed.txt``.
 
-		To use this file, you need to have a specific file structure within self.directory.
+		To use this file, you need to have a specific file structure within self.dir_output.
 			'%i/%i_sub_cutouts/' % (snap, snap). The files are then stored in the struture as '%i/%i_sub_cutouts/cutout_%i_%i.hdf5' % (snap, snap, snap, sub).
 
 			attributes:
 				:param	ill_run - (int) - illustris run to use
-				:param	directory - (str) - directory to work out of
+				:param	dir_output - (str) - dir_output to work out of
 
 	"""
 
-	def __init__(self, ill_run=1, directory='./extraction'):
+	def __init__(self, ill_run=1, dir_output='./extraction'):
 		self.ill_run = ill_run
-		self.directory = directory
+		self.dir_output = dir_output
 
 		# NO CHECK IF IT IS NEEDED
 
@@ -77,11 +77,11 @@ class DownloadNeeded:
 
 			cutout = download_sub(base_url, snap, sub, cutout_request=cutout_request)
 
-			if '%i' % snap not in os.listdir(self.directory):
+			if '%i' % snap not in os.listdir(self.dir_output):
 				os.mkdir('%i/' % snap)
 
-			if '%i_sub_cutouts' % snap not in os.listdir(self.directory + '%i/' % snap):
-				os.mkdir(self.directory + '%i/' % snap + '%i_sub_cutouts/' % snap)
+			if '%i_sub_cutouts' % snap not in os.listdir(self.dir_output + '%i/' % snap):
+				os.mkdir(self.dir_output + '%i/' % snap + '%i_sub_cutouts/' % snap)
 
 			# move file for good organization
 			os.rename(cutout, '%i/%i_sub_cutouts/cutout_%i_%i.hdf5' % (snap, snap, snap, sub))
