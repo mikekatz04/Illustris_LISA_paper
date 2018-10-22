@@ -34,7 +34,7 @@ class GetGroupSubs:
     """
 
     def __init__(self, first_snap_with_bhs=30, snaps_to_skip=[53, 55], additional_keys=['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'], ill_run=1, dir_output='./extraction_files', dir_input=None):
-
+        print(self.__class__.__name__)
         self.dir_output = dir_output
         self.dir_input = dir_input
         self.ill_run = 1
