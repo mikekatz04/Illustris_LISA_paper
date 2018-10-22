@@ -309,6 +309,15 @@ class LocateBHs(SubProcess):
 
 class LocateBHs_Odyssey(LocateBHs):
 
+    def __init__(self, *args, **kwargs):
+        from illpy_lib.subhalos import particle_hosts
+        super().__init__(*args, **kwargs)
+
+        print("Loading BH hosts data for all snapshots")
+        self.bh_hosts = particle_hosts.load_bh_hosts(self.ill_run)
+        print("\thosts loaded")
+        return
+
     def download_snapshot_files(self, snap):
         print("\t`download_snapshot_files` is not required on Odyssey")
         return
@@ -319,11 +328,12 @@ class LocateBHs_Odyssey(LocateBHs):
 
     def populate_bh_dict(self, snap):
         import illpy
-        from illpy_lib.subhalos import particle_hosts
+        # from illpy_lib.subhalos import particle_hosts
 
         # Load host subhalo information for all BHs in this snapshot
-        print("Loading BH hosts data for snapshot '{}'".format(snap))
-        bh_hosts = particle_hosts.load_bh_hosts_snap(self.ill_run, snap)
+        # print("Loading BH hosts data for snapshot '{}'".format(snap))
+        # bh_hosts = particle_hosts.load_bh_hosts_snap(self.ill_run, snap)
+        bh_hosts = self.bh_hosts['{:03d}'.format(snap)]
 
         # Only look at BH that have a subhhalo (those without have value '-1')
         goods = (bh_hosts['bh_subhalos'] >= 0)
@@ -340,17 +350,6 @@ class LocateBHs_Odyssey(LocateBHs):
         print("\tLoading all BH from snapshot '{}'".format(snap))
         snap_bhs = illpy.snapshot.loadSubset(self.dir_input, snap, ILL_BH_PART_TYPE, fields=keys)
         print("\t\tLoaded {} BH".format(snap_bhs['count']))
-
-        '''
-        length = len(check_bhs_in_sub['ParticleIDs'][:])
-        self.bhs_dict['Subhalo']['values'].append(np.full((length, ), sub, dtype=int))
-        self.bhs_dict['Snapshot']['values'].append(np.full((length, ), snap, dtype=int))
-
-        for name in self.bhs_dict:
-            if name == 'Subhalo' or name == 'Snapshot':
-                continue
-            self.bhs_dict[name]['values'].append(check_bhs_in_sub[name])
-        '''
 
         self.bhs_dict['Subhalo']['values'].append(bh_subhalos)
         self.bhs_dict['Snapshot']['values'].append(np.full((length, ), snap, dtype=int))
