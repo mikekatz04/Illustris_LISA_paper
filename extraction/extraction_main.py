@@ -336,7 +336,7 @@ def main():
 
     args = vars(parser.parse_args())
 
-    keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'find_bhs', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']
+    keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'find_bhs', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']  # 'gather_black_hole_information',
 
     if True not in list(args.values()) or args['all']:
         print('Running all functions')
