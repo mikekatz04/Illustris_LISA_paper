@@ -53,7 +53,8 @@ class FindSubhalosForSearch(SubProcess):
         Get the merger information from merger file.
         """
 
-        with h5py.File('bhs_mergers_new.hdf5', 'r') as f_merg:
+        fname = os.path.join(self.dir_output, 'bhs_mergers_new.hdf5')
+        with h5py.File(fname, 'r') as f_merg:
             id_in_new = f_merg['id_in_new'][:]
             id_out_new = f_merg['id_out_new'][:]
             merg_snap = f_merg['snapshot'][:]
@@ -65,7 +66,8 @@ class FindSubhalosForSearch(SubProcess):
         Gather general black hole information from all bhs catalog.
         """
 
-        with h5py.File('bhs_all_new.hdf5', 'r') as f_all:
+        fname = os.path.join(self.dir_output, 'bhs_all_new.hdf5')
+        with h5py.File(fname, 'r') as f_all:
             all_arr = np.core.records.fromarrays([f_all['ParticleIDs_new'][:], f_all['Snapshot'][:], f_all['Subhalo'][:]], names='id, snap, sub')
 
         # sort the array
@@ -80,7 +82,8 @@ class FindSubhalosForSearch(SubProcess):
         Gather information about subhalos with bhs.
         """
 
-        with h5py.File('subs_with_bhs.hdf5', 'r') as f_gc:
+        fname = os.path.join(self.dir_output, 'subs_with_bhs.hdf5')
+        with h5py.File(fname, 'r') as f_gc:
             subID_raw_gc = np.asarray(f_gc['Snapshot'][:]*1e12 + f_gc['SubhaloID'][:], dtype=np.uint64)
             SubhaloLenType = f_gc['SubhaloLenType'][:]
 
@@ -96,7 +99,7 @@ class FindSubhalosForSearch(SubProcess):
         # get all necessary information from files
         id_in_new, id_out_new, merg_snap = self.gather_from_merger_file()
         all_arr = self.gather_from_all_bhs_file()
-        subID_raw_gc, SubhaloLenType, sort_gc = self.gather_from_subs_with_bhs
+        subID_raw_gc, SubhaloLenType, sort_gc = self.gather_from_subs_with_bhs()
 
         good = np.genfromtxt('good_mergers.txt').astype(int)
 
