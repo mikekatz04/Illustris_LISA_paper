@@ -198,7 +198,7 @@ class SubPartIDs(SubProcess):
 
     def add_new_ids_to_all_bhs_file(self):
         """
-        Update all ideas in ``bhs_all_new.hdf5`` with their new IDs
+        Update all IDs in ``bhs_all_new.hdf5`` with their new IDs
         """
 
         # original data
@@ -210,18 +210,22 @@ class SubPartIDs(SubProcess):
         # same process as mergers, except without having to actually fix the merger
         change = self.change2
         for i in range(len(change)):
-            inds_fix = np.where((partIDs_all == change['id_remove'][i]) & (snap_all >= change['snap'][i]))[0]
+            # inds_fix = np.where((partIDs_all == change['id_remove'][i]) & (snap_all >= change['snap'][i]))[0]
+            inds_fix = (partIDs_all == change['id_remove'][i]) & (snap_all >= change['snap'][i])
 
             # if there is no switch needed
-            if len(inds_fix) == 0:
+            if np.count_nonzero(inds_fix) == 0:
                 print('no change no change')
+
             partIDs_all[inds_fix] = change['id_keep'][i]
 
             # still need to update change array even if there is no switch needed
-            inds_fix = np.where((change['id_keep'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
+            # inds_fix = np.where((change['id_keep'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
+            inds_fix = (change['id_keep'] == change['id_remove'][i]) & (change['time'] >= change['time'][i])
             change['id_keep'][inds_fix] = change['id_keep'][i]
 
-            inds_fix = np.where((change['id_remove'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
+            # inds_fix = np.where((change['id_remove'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
+            inds_fix = (change['id_remove'] == change['id_remove'][i]) & (change['time'] >= change['time'][i])
             change['id_remove'][inds_fix] = change['id_keep'][i]
 
             print(i)
@@ -268,17 +272,20 @@ class SubPartIDs(SubProcess):
         change = self.change3
 
         for i in range(len(change)):
-            inds_fix = np.where((partIDs_details == change['id_remove'][i]) & (time_details >= change['time'][i]))[0]
+            # inds_fix = np.where((partIDs_details == change['id_remove'][i]) & (time_details >= change['time'][i]))[0]
+            inds_fix = (partIDs_details == change['id_remove'][i]) & (time_details >= change['time'][i])
 
-            if len(inds_fix) == 0:
+            if np.count_nonzero(inds_fix) == 0:
                 print('No change needed')
             partIDs_details[inds_fix] = change['id_keep'][i]
 
             # Need to update change array.
-            inds_fix = np.where((change['id_keep'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
+            # inds_fix = np.where((change['id_keep'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
+            inds_fix = (change['id_keep'] == change['id_remove'][i]) & (change['time'] >= change['time'][i])
             change['id_keep'][inds_fix] = change['id_keep'][i]
 
-            inds_fix = np.where((change['id_remove'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
+            # inds_fix = np.where((change['id_remove'] == change['id_remove'][i]) & (change['time'] >= change['time'][i]))[0]
+            inds_fix = (change['id_remove'] == change['id_remove'][i]) & (change['time'] >= change['time'][i])
             change['id_remove'][inds_fix] = change['id_keep'][i]
 
             print(i)
