@@ -18,7 +18,8 @@ import argparse
 # from utils.create_final_data import CreateFinalDataset
 
 from utils import (prepare_sublink_trees, get_group_subs, find_sublink_indices, find_bhs,
-                   sub_partIDs_in_mergs, test_good_bad_mergers, get_subhalos_for_download)
+                   sub_partIDs_in_mergs, test_good_bad_mergers, get_subhalos_for_download,
+                   download_needed)
 
 
 class MainProcess:
@@ -49,6 +50,7 @@ class MainProcess:
     FindBadBlackHoles = test_good_bad_mergers.FindBadBlackHoles
     TestGoodBadMergers = test_good_bad_mergers.TestGoodBadMergers
     FindSubhalosForSearch = get_subhalos_for_download.FindSubhalosForSearch
+    DownloadNeeded = download_needed.DownloadNeeded
 
     ill_run = 1
     max_snap = 135
@@ -232,12 +234,9 @@ class MainProcess:
         """
         print('\nStart downloading subhalos.')
 
-        download_needed_kwargs = {
-            'dir_output': self.dir_output,
-            'ill_run': 1,
-        }
+        download_needed_kwargs = {}
 
-        download = DownloadNeeded(**download_needed_kwargs)
+        download = self.DownloadNeeded(self, **download_needed_kwargs)
         # this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
         download.download_needed_subhalos()
 
@@ -324,7 +323,7 @@ def main():
 
     args = vars(parser.parse_args())
 
-    keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'find_bhs', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']  # 'gather_black_hole_information',
+    keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'find_bhs', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'get_subhalos_for_download', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']  # 'gather_black_hole_information',
 
     if True not in list(args.values()) or args['all']:
         print('Running all functions')
