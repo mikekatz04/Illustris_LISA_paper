@@ -94,6 +94,7 @@ class SubPartIDs(SubProcess):
 
         # download the original file if it is not in folder.
         fname_mergers = self.fname_bhs_mergers()
+        # WARNING: I think something is wrong here, wrong file being downloaded here?
         if not os.path.exists(fname_mergers):
             self.download_original_bh_merger_file()
 
