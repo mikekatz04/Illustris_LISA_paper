@@ -72,17 +72,17 @@ class SubPartIDs(SubProcess):
         Use `get` to download the original black hole merger file from the Illustris website.
         """
 
-        if 'blackhole_mergers.hdf5' % self.ill_run in os.listdir(self.dir_output):
-            print('blackhole_mergers.hdf5 already downloaded.' % self.ill_run)
+        fname_illustris_mergers = os.path.join(self.dir_output, 'blackhole_mergers-ILL%i.hdf5' % self.ill_run)
+        if os.path.exists(fname_illustris_mergers):
+            print('blackhole_mergers.hdf5 already downloaded.')
             return
 
-        print('blackhole_mergers.hdf5 -> beginning download.' % self.ill_run)
+        print('blackhole_mergers.hdf5 -> beginning download.')
 
         fp = get('http://www.illustris-project.org/api/Illustris-%i/files/blackhole_mergers.hdf5' % self.ill_run)
 
         # move and rename file in correct dir_output
-        fname_all = self.fname_bhs_all()
-        os.rename(fp, fname_all)
+        os.rename(fp, fname_illustris_mergers)
 
         print('blackhole_mergers-ILL%i.hdf5 -> finished download.' % self.ill_run)
         return
@@ -241,14 +241,14 @@ class SubPartIDs(SubProcess):
         Download blackhole details file from Illustris website.
         """
 
-        if 'blackhole_details-ILL%i.hdf5' % self.ill_run in os.listdir('self.dir_output'):
+        fname_illustris_details = os.path.join(self.dir_output, 'blackhole_details-ILL%i.hdf5' % self.ill_run)
+        if os.path.exists(fname_illustris_details):
             print('blackhole_details-ILL%i.hdf5 already downloaded.' % self.ill_run)
             return
 
         print('blackhole_details-ILL%i.hdf5 -> beginning download.' % self.ill_run)
         fp = get('http://www.illustris-project.org/api/Illustris-%i/files/blackhole_details.hdf5' % self.ill_run)
-        fname_details = self.fname_bhs_details()
-        os.rename(fp, fname_details)
+        os.rename(fp, fname_illustris_details)
         print('blackhole_details-ILL%i.hdf5 -> finished download.' % self.ill_run)
         return
 
