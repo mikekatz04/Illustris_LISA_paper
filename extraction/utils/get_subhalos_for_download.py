@@ -5,9 +5,12 @@ MAIN PURPOSE: final check for which subhalos we need to download primarily based
 import os
 import numpy as np
 import h5py
+import tqdm
+
+from utils import SubProcess
 
 
-class FindSubhalosForSearch:
+class FindSubhalosForSearch(SubProcess):
     """
     FindSubhalosForSearch checks for an outputs the subhalos that need to be downloaded in order to create density profiles and get velocity dispersions. These subhalos have to be downloaded from the Illustris server with all of their particles. This will take a lot of memory, so we only want to do this for the subhalos we absolutely need.
 
@@ -33,14 +36,15 @@ class FindSubhalosForSearch:
             find_subs_to_search
     """
 
-    def __init__(self, dir_output, use_second_sub_back=False, skip_snaps=[53, 55]):
-        self.dir_output = dir_output
+    def __init__(self, main_proc, use_second_sub_back=False):
+        super().__init__(main_proc)
+        # self.dir_output = dir_output
+        # self.skip_snaps = skip_snaps
         self.use_second_sub_back = use_second_sub_back
-        self.skip_snaps = skip_snaps
 
-        if 'snaps_and_subs_needed.txt' in os.listdir(self.dir_output):
+        fname = self.fname_snaps_and_subs()
+        if os.path.exists(fname):
             self.needed = False
-
         else:
             self.needed = True
 
@@ -98,9 +102,9 @@ class FindSubhalosForSearch:
 
         subs_to_search = []
         print('Search subhalos for', len(good), 'mergers.')
-        for i, m in enumerate(good):
-            if i % 100 == 0:
-                print(i)
+        for i, m in enumerate(tqdm.tqdm(good, desc='Good mergers')):
+            # if i % 100 == 0:
+            #     print(i)
 
             # get the information specific to this merger
             id_in = id_in_new[m]
@@ -110,7 +114,6 @@ class FindSubhalosForSearch:
             # look for host galaxy post merger
             try:
                 ind_final = np.where((all_arr['id'] == id_out) & (all_arr['snap'] == snap))[0][0]
-
             # if not found, just go to next merger because this one will not be considered
             except IndexError:
                 continue
@@ -124,7 +127,6 @@ class FindSubhalosForSearch:
 
             try:
                 ind_prev_out = np.where((all_arr['id'] == id_out) & (all_arr['snap'] == prev_snap))[0][0]
-
             except IndexError:
                 continue
 
@@ -147,14 +149,12 @@ class FindSubhalosForSearch:
 
                     try:
                         ind_prev_out = np.where((all_arr['id'] == id_out) & (all_arr['snap'] == prev_snap))[0][0]
-
                     except IndexError:
                         continue
 
                     # prev_in_sub
                     try:
                         ind_prev_in = np.where((all_arr['id'] == id_in) & (all_arr['snap'] == prev_snap))[0][0]
-
                     except IndexError:
                         continue
 
@@ -199,6 +199,10 @@ class FindSubhalosForSearch:
         out = np.sort(out, order=('m', 'which', 'snap', 'sub'))
 
         # read out
-        np.savetxt('snaps_and_subs_needed.txt', out, fmt='%i\t%i\t%i\t%i', header='which number is (3, final_out) (2, prev_out) (1, prev_in)\nmerger\twhich\tsnap\tsub')
+        fname = self.fname_snaps_and_subs()
+        np.savetxt(fname, out, fmt='%i\t%i\t%i\t%i', header='which number is (3, final_out) (2, prev_out) (1, prev_in)\nmerger\twhich\tsnap\tsub')
 
         return
+
+    def fname_snaps_and_subs(self):
+        return os.path.join(self.dir_output, 'snaps_and_subs_needed.txt')

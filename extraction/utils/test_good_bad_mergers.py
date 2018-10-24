@@ -10,9 +10,12 @@ MAIN PURPOSE: determine which mergers are good and bad.
 import os
 import h5py
 import numpy as np
+import tqdm
+
+from utils import SubProcess
 
 
-class TestGoodBadMergers:
+class TestGoodBadMergers(SubProcess):
     """
         TestGoodBadMergers tests whether either constituent exists in the simulation for 1 or less snapshots. This only applies to black holes less than 10^6. The algorithms used here are not perfect and can let a few of these slip by. Therefore, if a black hole is larger than 10^6, it is considered good no matter how long its ParticleID has existed. (We assume if it is larger than 10^6, it has been around longer than 2 snapshots.)
 
@@ -26,12 +29,12 @@ class TestGoodBadMergers:
             search_bad_black_holes
     """
 
-    def __init__(self, dir_output):
-        self.dir_output = dir_output
+    def __init__(self, main_proc):
+        super().__init__(main_proc)
 
-        if 'good_mergers.txt' in os.listdir(self.dir_output):
+        fname_goods = self.fname_good_mergers()
+        if not os.path.exists(fname_goods):
             self.needed = False
-
         else:
             self.needed = True
 
@@ -83,11 +86,15 @@ class TestGoodBadMergers:
                     good.append(m)
 
         # read out
-        np.savetxt(self.dir_output + 'good_mergers.txt', np.array([np.array(good)]).T)
+        fname_goods = self.fname_good_mergers()
+        np.savetxt(fname_goods, np.array([np.array(good)]).T)
         return
 
+    def fname_good_mergers(self):
+        return os.path.join(self.dir_output, 'good_mergers.txt')
 
-class FindBadBlackHoles:
+
+class FindBadBlackHoles(SubProcess):
     """
     FindBadBlackHoles walks down trees in the sublink trees locating bad black holes. This is the key aspect to the more in-depth analysis to access the near-seed mass black holes. What we mean by bad black holes is the following: when a subhalo loses its black hole in a fly-by encounter and subsequently spawns a new black hole, the spawned black hole is considered bad.
 
@@ -121,10 +128,11 @@ class FindBadBlackHoles:
 
         MAIN JOB: locate bad black holes resulting from fly-by encounters of host galaxies
     """
-    def __init__(self, dir_output='./extraction_files'):
-        self.dir_output = dir_output
+    def __init__(self, main_proc):
+        super().__init__(main_proc)
 
-        if 'bad_black_holes.txt' in os.listdir(self.dir_output):
+        fname_bads = self.fname_bad_bhs()
+        if not os.path.exists(fname_bads):
             self.needed = False
         else:
             self.needed = True
@@ -147,7 +155,8 @@ class FindBadBlackHoles:
 
         # only need to look at black holes where the last time
         # we see them are before snapshot 135
-        filter_inds = np.where(snaps_all[::-1][index] != 135)[0]
+        # filter_inds = np.where(snaps_all[::-1][index] != 135)[0]
+        filter_inds = (snaps_all[::-1][index] != 135)
 
         # this is the filtered version of subID_raw_all
         subID_raw_filtered = np.asarray(snaps_all[::-1][index][filter_inds]*1e12 + subhalos_all[::-1][index][filter_inds], dtype=np.int64)
@@ -179,7 +188,7 @@ class FindBadBlackHoles:
         bad = []
         print(len(final_subs_inds), 'to look at')
 
-        for j, final_ind in enumerate(final_subs_inds):
+        for j, final_ind in enumerate(tqdm.tqdm(final_subs_inds, desc='Subhalo inds')):
             desc_ind = final_ind
 
             # iterate down the tree
@@ -204,12 +213,16 @@ class FindBadBlackHoles:
                         # append to bad list
                         bad.append((part_ids_all[ind_sub], bh_masses_all[ind_sub], f_sublink['SnapNum'][desc_ind]))
 
-            if j % 100 == 0:
-                print(j)
+            # if j % 100 == 0:
+            #     print(j)
 
         # read out
         bad_arr = np.asarray(bad, dtype=[('id', np.dtype(np.uint64)), ('mass', np.dtype(float)), ('snap', np.dtype(np.int32))])
 
-        np.savetxt(self.dir_output + 'bad_black_holes.txt', bad_arr)
+        fname_bads = self.fname_bad_bhs()
+        np.savetxt(fname_bads, bad_arr)
         f_sublink.close()
         return
+
+    def fname_bad_bhs(self):
+        return os.path.join(self.dir_output, 'bad_black_holes.txt')
