@@ -8,8 +8,8 @@ import argparse
 # from utils.prepare_sublink_trees import PrepSublink
 # from utils.get_group_subs import GetGroupSubs
 # from utils.find_sublink_indices import SublinkIndexFind
-
 # from utils.find_bhs import LocateBHs
+
 # from utils.sub_partIDs_in_mergs import SubPartIDs
 # from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
 # from utils.get_subhalos_for_download import FindSubhalosForSearch
@@ -17,7 +17,8 @@ import argparse
 # from utils.density_vel_disp_of_subs import DensityProfVelDisp
 # from utils.create_final_data import CreateFinalDataset
 
-from utils import prepare_sublink_trees, get_group_subs, find_sublink_indices, find_bhs
+from utils import (prepare_sublink_trees, get_group_subs, find_sublink_indices, find_bhs,
+                   sub_partIDs_in_mergs, test_good_bad_mergers, get_subhalos_for_download)
 
 
 class MainProcess:
@@ -44,6 +45,10 @@ class MainProcess:
     GetGroupSubs = get_group_subs.GetGroupSubs
     SublinkIndexFind = find_sublink_indices.SublinkIndexFind
     LocateBHs = find_bhs.LocateBHs
+    SubPartIDs = sub_partIDs_in_mergs.SubPartIDs
+    FindBadBlackHoles = test_good_bad_mergers.FindBadBlackHoles
+    TestGoodBadMergers = test_good_bad_mergers.TestGoodBadMergers
+    FindSubhalosForSearch = get_subhalos_for_download.FindSubhalosForSearch
 
     ill_run = 1
     max_snap = 135
@@ -154,12 +159,10 @@ class MainProcess:
         print('\nStart substituting IDs for continuity.')
 
         sub_partIDs_in_mergs_kwargs = {
-            'ill_run': 3,
-            'dir_output': self.dir_output,
             'run_details': False,
         }
 
-        sub_ids = SubPartIDs(**sub_partIDs_in_mergs_kwargs)
+        sub_ids = self.SubPartIDs(self, **sub_partIDs_in_mergs_kwargs)
         if sub_ids.mergers_needed or sub_ids.all_needed or sub_ids.details_needed:
             sub_ids.find_necessary_switches()
 
@@ -188,19 +191,15 @@ class MainProcess:
         """
         print('\nStart finding good/bad mergers.')
 
-        find_bad_black_holes_kwargs = {
-            'dir_output': self.dir_output
-        }
+        find_bad_black_holes_kwargs = {}
 
-        bad_bhs = FindBadBlackHoles(**find_bad_black_holes_kwargs)
+        bad_bhs = self.FindBadBlackHoles(self, **find_bad_black_holes_kwargs)
         if bad_bhs.needed:
             bad_bhs.search_bad_black_holes()
 
-        test_good_bad_mergers_kwargs = {
-            'dir_output': self.dir_output
-        }
+        test_good_bad_mergers_kwargs = {}
 
-        good_or_bad_mergers = TestGoodBadMergers(**test_good_bad_mergers_kwargs)
+        good_or_bad_mergers = self.TestGoodBadMergers(self, **test_good_bad_mergers_kwargs)
         if good_or_bad_mergers.needed:
             good_or_bad_mergers.test_mergers()
 
@@ -215,12 +214,10 @@ class MainProcess:
         print('\nStart gathering subhalos for download.')
 
         get_subhalos_for_download_kwargs = {
-            'dir_output': self.dir_output,
-            'skip_snaps': [53, 55],
             'use_second_sub_back': False,
         }
 
-        gather_subs = FindSubhalosForSearch(**get_subhalos_for_download_kwargs)
+        gather_subs = self.FindSubhalosForSearch(self, **get_subhalos_for_download_kwargs)
         if gather_subs.needed:
             gather_subs.find_subs_to_search()
 
