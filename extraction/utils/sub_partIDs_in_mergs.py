@@ -7,11 +7,12 @@ import h5py
 import numpy as np
 
 from utils.generalfuncs import get
+from utils import SubProcess
 
 
-class SubPartIDs:
+class SubPartIDs(SubProcess):
     """
-    SubPartIDs is the most pivotal change to the date for better analysis. In the Illustris simulation, when two black hole particles are merged, the bh particle ID that lives on is chosen at random. This causes problems with continuity in following a black hole amongst other issues. In this code, the larger mass black holes is chosen to live on. Therefore, we locate all mergers that need an adjustment. This adjustment is applied to merger, details (default is to not do details catalog), and all bhs files for any time after the merger.
+    SubPartIDs is the most pivotal change to the data for better analysis. In the Illustris simulation, when two black hole particles are merged, the bh particle ID that lives on is chosen at random. This causes problems with continuity in following a black hole amongst other issues. In this code, the larger mass black holes is chosen to live on. Therefore, we locate all mergers that need an adjustment. This adjustment is applied to merger, details (default is to not do details catalog), and all bhs files for any time after the merger.
 
         attributes:
             :param  ill_run - (int) - illustris run to use
@@ -32,13 +33,13 @@ class SubPartIDs:
             add_new_ids_to_details_file
     """
 
-    def __init__(self, ill_run=1, dir_output='./extraction_files/', run_details=False):
-        self.ill_run = ill_run
-        self.dir_output = dir_output
+    def __init__(self, main_proc, run_details=False):
+        super().__init__(main_proc)
 
         # see if the new columns are added and if the files exist
-        if 'bhs_mergers_new.hdf5' in os.listdir(self.dir_output):
-            with h5py.File('bhs_mergers_new', 'r') as f:
+        fname_mergers = self.fname_bhs_mergers()
+        if os.path.exists(fname_mergers):
+            with h5py.File(fname_mergers, 'r') as f:
                 if 'mass_in_new' in list(f):
                     self.mergers_needed = False
                 else:
@@ -48,13 +49,15 @@ class SubPartIDs:
             self.mergers_needed = True
 
         # bhs_all_new.hdf5 should be in the folder from `find_bhs.py`
-        with h5py.File('bhs_all_new.hdf5', 'r') as f:
+        fname_all = self.fname_bhs_all()
+        with h5py.File(fname_all, 'r') as f:
             if 'ParticleIDs_new' in list(f):
                 self.all_needed = False
 
         if run_details:
-            if 'bhs_details_new.hdf5' in os.listdir(self.dir_output):
-                with h5py.File('bhs_details_new', 'r') as f:
+            fname_details = self.fname_bhs_details()
+            if os.path.exists(fname_details):
+                with h5py.File(fname_details, 'r') as f:
                     if 'id_new' in list(f):
                         self.details_needed = False
                     else:
@@ -78,7 +81,8 @@ class SubPartIDs:
         fp = get('http://www.illustris-project.org/api/Illustris-%i/files/blackhole_mergers.hdf5' % self.ill_run)
 
         # move and rename file in correct dir_output
-        os.rename(fp, self.dir_output + 'bhs_all_new.hdf5')
+        fname_all = self.fname_bhs_all()
+        os.rename(fp, fname_all)
 
         print('blackhole_mergers-ILL%i.hdf5 -> finished download.' % self.ill_run)
         return
@@ -89,10 +93,11 @@ class SubPartIDs:
         """
 
         # download the original file if it is not in folder.
-        if 'bhs_mergers_new.hdf5' not in os.listdir(self.dir_output):
+        fname_mergers = self.fname_bhs_mergers()
+        if not os.path.exists(fname_mergers):
             self.download_original_bh_merger_file()
 
-        with h5py.File(self.dir_output + 'bhs_mergers_new.hdf5', 'r') as f_merg:
+        with h5py.File(fname_mergers, 'r') as f_merg:
 
             # get original quantities
             mass_in = f_merg['mass_in'][:]
@@ -130,7 +135,8 @@ class SubPartIDs:
         Fix the mergers in ``bhs_mergers_new.hdf5``.
         """
         # get original data
-        with h5py.File(self.dir_output + 'bhs_mergers_new.hdf5', 'r') as f_merg:
+        fname_mergers = self.fname_bhs_mergers()
+        with h5py.File(fname_mergers, 'r') as f_merg:
             mass_in = f_merg['mass_in'][:]
             mass_out = f_merg['mass_out'][:]
             time = f_merg['time'][:]
@@ -181,7 +187,7 @@ class SubPartIDs:
             print(i)
 
         # read out
-        with h5py.File(self.dir_output + 'bhs_mergers_new.hdf5', 'a') as f_merg:
+        with h5py.File(fname_mergers, 'a') as f_merg:
             f_merg['id_in_new'] = partIDs[:, 0]
             f_merg['mass_in_new'] = masses[:, 0]
 
@@ -196,7 +202,8 @@ class SubPartIDs:
         """
 
         # original data
-        with h5py.File(self.dir_output + 'bhs_all_new.hdf5', 'r') as f_all:
+        fname_all = self.fname_bhs_all()
+        with h5py.File(fname_all, 'r') as f_all:
             partIDs_all = f_all['ParticleIDs'][:]
             snap_all = f_all['Snapshot'][:]
 
@@ -220,7 +227,7 @@ class SubPartIDs:
             print(i)
 
         # read out
-        with h5py.File(self.dir_output + 'bhs_all_new.hdf5', 'a') as f_all:
+        with h5py.File(fname_all, 'a') as f_all:
             f_all.create_dataset('ParticleIDs_new', data=partIDs_all, dtype=partIDs_all.dtype.name, chunks=True, compression='gzip', compression_opts=9)
 
         return
@@ -236,7 +243,8 @@ class SubPartIDs:
 
         print('blackhole_details-ILL%i.hdf5 -> beginning download.' % self.ill_run)
         fp = get('http://www.illustris-project.org/api/Illustris-%i/files/blackhole_details.hdf5' % self.ill_run)
-        os.rename(fp, self.dir_output + 'bhs_details_new.hdf5')
+        fname_details = self.fname_bhs_details()
+        os.rename(fp, fname_details)
         print('blackhole_details-ILL%i.hdf5 -> finished download.' % self.ill_run)
         return
 
@@ -246,11 +254,12 @@ class SubPartIDs:
         """
 
         # download the original file if it is not in folder.
-        if 'bhs_details_new.hdf5' not in os.listdir(self.dir_output):
+        fname_details = self.fname_bhs_details()
+        if not os.path.exists(fname_details):
             self.download_details_file()
 
         # original data
-        with h5py.File(self.dir_output + 'bhs_details_new.hdf5', 'r') as f_dets:
+        with h5py.File(fname_details, 'r') as f_dets:
             partIDs_details = f_dets['id'][:]
             time_details = f_dets['time'][:]
 
@@ -275,7 +284,19 @@ class SubPartIDs:
             print(i)
 
         # read out
-        with h5py.File(self.dir_output + 'bhs_details_new.hdf5', 'a') as f_dets_new:
+        with h5py.File(fname_details, 'a') as f_dets_new:
             f_dets_new.create_dataset('id_new', data=partIDs_details, dtype=partIDs_details.dtype.name, chunks=True, compression='gzip', compression_opts=9)
 
         return
+
+    def fname_bhs_mergers(self):
+        fname = os.path.join(self.dir_output, 'bhs_mergers_new.hdf5')
+        return fname
+
+    def fname_bhs_all(self):
+        fname = os.path.join(self.dir_output, 'bhs_all_new.hdf5')
+        return fname
+
+    def fname_bhs_details(self):
+        fname = os.path.join(self.dir_output, 'bhs_details_new.hdf5')
+        return fname
