@@ -13,6 +13,14 @@ from utils.basicmergers import MagicMergers
 from utils.resample import KDEResample, GenerateCatalog
 from utils.parallelsnr import ParallelSNR, parallel_snr_func
 
+def z_at(coalescence_time, num_interp_points=1000):
+	### get z_coal
+	zs = np.linspace(0.0, 20.0, num_interp_points)
+	age = cosmo.age(zs).value*1e9
+
+	check = interpolate.interp1d(age, zs)
+	return check(coalescence_time)
+
 def detection_rate_main(num_catalogs, t_obs, duration, fp, evolve_key_guide, kde_key_guide, evolve_class, merger_rate_kwargs, parallel_kwargs, snr_kwargs, only_detectable=False, snr_threshold=8.0):
 
 	begin_time = time.time()
@@ -27,14 +35,10 @@ def detection_rate_main(num_catalogs, t_obs, duration, fp, evolve_key_guide, kde
 	#mergers in hubble time
 	inds_keep = np.where(mbh.coalescence_time < cosmo.age(0.0).value*1e9)[0]
 
-	### get z_coal
-	zs = np.linspace(0.0, 20.0, 10000)
-	age = cosmo.age(zs).value*1e9
-
-	check = interpolate.interp1d(age, zs)
+	
 
 	#merger_rate_kwargs['z_vals'] = mbh.z_coal = np.interp(mbh.coalescence_time[inds_keep], age, zs)
-	merger_rate_kwargs['z_vals'] = mbh.z_coal = check(mbh.coalescence_time[inds_keep])
+	merger_rate_kwargs['z_vals'] = mbh.z_coal = z_at(mbh.coalescence_time[inds_keep])
 
 	#### Merger Rate Per Year ####
 	mr_class = MergerRate(**merger_rate_kwargs)

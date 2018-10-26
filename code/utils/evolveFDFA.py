@@ -2,12 +2,13 @@ from scipy.interpolate import interp1d, interp2d
 from scipy.special import gamma as Gamma_Function
 from scipy.integrate import quad
 from scipy.special import hyp2f1
+from scipy import constants as ct
 import numpy as np
 import pdb
 
 from utils.mbhbinaries import mass_ratio_func, MassiveBlackHoleBinaries, AnalyticApproximations
 
-
+Msun=1.989e30
 
 class EvolveFDFA(MassiveBlackHoleBinaries):
 		#put all quantities into arrays to determine which is major galaxy and minor galaxy'
@@ -196,7 +197,11 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 		
 		T_h_GW = 1.7e8 * (self.r_infl/30.)**((10 + 4*psi)/(5 + psi)) * ((self.M+self.m)/1e8)**((-5-3*psi)/(5+psi)) * phi**(-4/(5+psi)) * (4*self.q/(1+self.q)**2)**((3*psi - 1)/(5 + psi))* f_e**((1+psi)/(5+psi)) * 20**psi #years
 
-		self.Hardening_GW_timescale = T_h_GW*(self.q>=1e-3) + 0.0*(self.q<1e-3)
+		T_GW = self.find_T_GW()
+
+
+
+		self.Hardening_GW_timescale = T_h_GW*(self.q>=1e-3) + T_GW*(self.q<1e-3)
 		return
 
 	def find_chi(self):
@@ -210,6 +215,15 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 	def f_e_func(self):
 		return (1-self.e_f**2)**(7/2)/(1 + (73./24.)*self.e_f**2 + (37.0/96.)*self.e_f**4)
 
+	def find_T_GW(self):
+		self.find_a_h()
+		m1 = self.M*Msun*ct.G/ct.c**2
+		m2 = self.m*Msun*ct.G/ct.c**2
+		beta = 64./5. * m1*m2*(m1+m2)
+		T_GW_meters = self.a_h**4/beta
+		T_GW_seconds = T_GW_meters/ct.c
+		T_GW_yr = T_GW_seconds/(ct.Julian_year)
+		return T_GW_yr
 
 def beta_integrand_func(x, ksi, b):
 	return x**2 * (2-x**2)**b * np.log((x + ksi)/(x - ksi))
