@@ -21,13 +21,13 @@ class SublinkIndexFind(SubProcess):
             find_indices
     """
 
-    def __init__(self, main_proc, num_files=6, dir_output='./extraction_files'):
-        super().__init__(main_proc)
-        self.dir_output = dir_output
+    def __init__(self, core, num_files=6):
+        super().__init__(core)
         self.num_files = num_files
 
         # check if needed
-        with h5py.File(self.dir_output + 'sublink_short.hdf5', 'r') as f:
+        fname = self.core.fname_sublink_short()
+        with h5py.File(fname, 'r') as f:
             keys = list(f)
             if 'Descendant_index' in keys:
                 print('\tSublinkIndexFind descendant indices already added to sublink_short.')
@@ -82,7 +82,8 @@ class SublinkIndexFind(SubProcess):
         # concatenate index lists and append to full ``sublink_short.hdf5``
         desc_inds = np.concatenate(desc_inds)
         subhaloID_inds = np.concatenate(subhaloID_inds)
-        with h5py.File(self.dir_output + 'sublink_short.hdf5', 'a') as f:
+        fname = self.core.fname_sublink_short()
+        with h5py.File(fname, 'a') as f:
             print('start descendants append')
             f.create_dataset('Descendant_index', data=desc_inds, dtype=desc_inds.dtype.name, chunks=True, compression='gzip', compression_opts=9)
 

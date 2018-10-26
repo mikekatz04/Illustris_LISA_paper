@@ -28,14 +28,16 @@ class PrepSublink(SubProcess):
             combine_sublink_shorts
     """
 
-    def __init__(self, main_proc, num_files=6, keys=['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass', 'SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID', 'SubhaloSFR']):
-        super().__init__(main_proc)
+    def __init__(self, core, num_files=6, keys=['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass', 'SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID', 'SubhaloSFR']):
+        super().__init__(core)
 
         self.num_files, self.keys = num_files, keys
 
         num_files_complete = 0
         for num in range(self.num_files):
-            if 'sublink_short_%i.hdf5' % num in os.listdir(self.dir_output):
+            fname_short_num = self.fname_sublink_short_num(num)
+            # if 'sublink_short_%i.hdf5' % num in os.listdir(self.dir_output):
+            if os.path.exists(fname_short_num):
                 num_files_complete += 1
 
         if num_files_complete == self.num_files:
@@ -50,26 +52,28 @@ class PrepSublink(SubProcess):
         downloads the sublink files and converts them to a corresponding short file. These are needed for conversion of decsendant IDs to indexes.
         """
         for num in range(self.num_files):
+            fname_num = self.fname_sublink_num(num)   # i.e. old
+            fname_short_num = self.fname_sublink_short_num(num)  # i.e. new
             # check if this file is done
-            if 'sublink_short_%i.hdf5' % num in os.listdir(self.dir_output):
+            if os.path.exists(fname_short_num):
                 print('sublink_short_%i.hdf5' % num, 'already downloaded.')
                 continue
 
             # check if we have the downloaded file left over. If not, download it.
-            if 'tree_extended.%i.hdf5' % num not in os.listdir(self.dir_output):
+            # if 'tree_extended.%i.hdf5' % num not in os.listdir(self.dir_output):
+            if not os.path.exists(fname_num):
                 downloaded_file = get(self.base_url + 'files/sublink.%i.hdf5' % num)
-                os.rename(downloaded_file, self.dir_output + 'sublink.%i.hdf5' % num)
+                os.rename(downloaded_file, fname_num)
 
             # write quantities of interest to short version.
-            with h5py.File(self.dir_output + 'sublink.%i.hdf5' % num, 'r') as old_sublink_file:
-                with h5py.File(self.dir_output + 'sublink_short_%i.hdf5' % num, 'w') as new_sublink_file:
-
+            with h5py.File(fname_num, 'r') as old_sublink_file:
+                with h5py.File(fname_short_num, 'w') as new_sublink_file:
                     for key in self.keys:
                         out = old_sublink_file[key][:]
                         new_sublink_file.create_dataset(key, data=out, dtype=out.dtype.name, chunks=True, compression='gzip', compression_opts=9)
 
             # delete larger dataset
-            os.remove(self.dir_output + 'sublink.%i.hdf5' % num)
+            os.remove(fname_num)
             print('sublink_short_%i.hdf5' % num, 'complete.')
 
         return
@@ -80,7 +84,8 @@ class PrepSublink(SubProcess):
         """
 
         # check if this is already done
-        if 'sublink_short.hdf5' in os.listdir(self.dir_output):
+        fname = self.core.fname_sublink_short()
+        if os.path.exists(fname):
             print('sublink_short.hdf5 (combined data) already in folder.')
             return
 
@@ -89,7 +94,8 @@ class PrepSublink(SubProcess):
 
         # gather all the data from the numbered short files
         for num in range(self.num_files):
-            small_file = h5py.File(self.dir_output + 'sublink_short_%i.hdf5' % num, 'r')
+            fname_num = self.fname_sublink_short_num(num)
+            small_file = h5py.File(fname_num, 'r')
             for key in self.keys:
                 out_dict[key].append(small_file[key][:])
 
@@ -97,9 +103,15 @@ class PrepSublink(SubProcess):
         out_dict = {key: np.concatenate(out_dict[key], axis=0) for key in self.keys}
 
         # write to overall short file
-        with h5py.File(self.dir_output + 'sublink_short.hdf5', 'w') as combined_sublink:
+        with h5py.File(fname, 'w') as combined_sublink:
             for key in self.keys:
                 combined_sublink.create_dataset(key, data=out_dict[key], dtype=out_dict[key].dtype.name, chunks=True, compression='gzip', compression_opts=9)
 
         print('sublink_short.hdf5 complete (combined data)')
         return
+
+    def fname_sublink_short_num(self, num):
+        return self.core.path_output('sublink_short_%i.hdf5' % num)
+
+    def fname_sublink_num(self, num):
+        return self.core.path_output('sublink.%i.hdf5' % num)

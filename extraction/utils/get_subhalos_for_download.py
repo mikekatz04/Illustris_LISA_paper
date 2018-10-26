@@ -36,13 +36,13 @@ class FindSubhalosForSearch(SubProcess):
             find_subs_to_search
     """
 
-    def __init__(self, main_proc, use_second_sub_back=False):
-        super().__init__(main_proc)
+    def __init__(self, core, use_second_sub_back=False):
+        super().__init__(core)
         # self.dir_output = dir_output
         # self.skip_snaps = skip_snaps
         self.use_second_sub_back = use_second_sub_back
 
-        fname = self.fname_snaps_and_subs()
+        fname = self.core.fname_snaps_and_subs()
         if os.path.exists(fname):
             self.needed = False
         else:
@@ -53,7 +53,7 @@ class FindSubhalosForSearch(SubProcess):
         Get the merger information from merger file.
         """
 
-        fname = os.path.join(self.dir_output, 'bhs_mergers_new.hdf5')
+        fname = self.core.fname_bhs_mergers()
         with h5py.File(fname, 'r') as f_merg:
             id_in_new = f_merg['id_in_new'][:]
             id_out_new = f_merg['id_out_new'][:]
@@ -66,7 +66,7 @@ class FindSubhalosForSearch(SubProcess):
         Gather general black hole information from all bhs catalog.
         """
 
-        fname = os.path.join(self.dir_output, 'bhs_all_new.hdf5')
+        fname = self.core.fname_bhs_all()
         with h5py.File(fname, 'r') as f_all:
             all_arr = np.core.records.fromarrays([f_all['ParticleIDs_new'][:], f_all['Snapshot'][:], f_all['Subhalo'][:]], names='id, snap, sub')
 
@@ -82,7 +82,7 @@ class FindSubhalosForSearch(SubProcess):
         Gather information about subhalos with bhs.
         """
 
-        fname = os.path.join(self.dir_output, 'subs_with_bhs.hdf5')
+        fname = self.core.fname_subs_with_bhs()
         with h5py.File(fname, 'r') as f_gc:
             subID_raw_gc = np.asarray(f_gc['Snapshot'][:]*1e12 + f_gc['SubhaloID'][:], dtype=np.uint64)
             SubhaloLenType = f_gc['SubhaloLenType'][:]
@@ -101,7 +101,8 @@ class FindSubhalosForSearch(SubProcess):
         all_arr = self.gather_from_all_bhs_file()
         subID_raw_gc, SubhaloLenType, sort_gc = self.gather_from_subs_with_bhs()
 
-        good = np.genfromtxt('good_mergers.txt').astype(int)
+        fname = self.core.fname_good_mergers()
+        good = np.genfromtxt(fname).astype(int)
 
         subs_to_search = []
         print('Search subhalos for', len(good), 'mergers.')
@@ -202,10 +203,7 @@ class FindSubhalosForSearch(SubProcess):
         out = np.sort(out, order=('m', 'which', 'snap', 'sub'))
 
         # read out
-        fname = self.fname_snaps_and_subs()
+        fname = self.core.fname_snaps_and_subs()
         np.savetxt(fname, out, fmt='%i\t%i\t%i\t%i', header='which number is (3, final_out) (2, prev_out) (1, prev_in)\nmerger\twhich\tsnap\tsub')
 
         return
-
-    def fname_snaps_and_subs(self):
-        return os.path.join(self.dir_output, 'snaps_and_subs_needed.txt')
