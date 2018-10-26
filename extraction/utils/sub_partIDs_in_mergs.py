@@ -33,11 +33,11 @@ class SubPartIDs(SubProcess):
             add_new_ids_to_details_file
     """
 
-    def __init__(self, main_proc, run_details=False):
-        super().__init__(main_proc)
+    def __init__(self, core, run_details=False):
+        super().__init__(core)
 
         # see if the new columns are added and if the files exist
-        fname_mergers = self.fname_bhs_mergers()
+        fname_mergers = self.core.fname_bhs_mergers()
         if os.path.exists(fname_mergers):
             with h5py.File(fname_mergers, 'r') as f:
                 if 'mass_in_new' in list(f):
@@ -49,13 +49,13 @@ class SubPartIDs(SubProcess):
             self.mergers_needed = True
 
         # bhs_all_new.hdf5 should be in the folder from `find_bhs.py`
-        fname_all = self.fname_bhs_all()
+        fname_all = self.core.fname_bhs_all()
         with h5py.File(fname_all, 'r') as f:
             if 'ParticleIDs_new' in list(f):
                 self.all_needed = False
 
         if run_details:
-            fname_details = self.fname_bhs_details()
+            fname_details = self.core.fname_bhs_details()
             if os.path.exists(fname_details):
                 with h5py.File(fname_details, 'r') as f:
                     if 'id_new' in list(f):
@@ -72,7 +72,8 @@ class SubPartIDs(SubProcess):
         Use `get` to download the original black hole merger file from the Illustris website.
         """
 
-        fname_illustris_mergers = os.path.join(self.dir_output, 'blackhole_mergers-ILL%i.hdf5' % self.ill_run)
+        # fname_illustris_mergers = os.path.join(self.dir_output, 'blackhole_mergers-ILL%i.hdf5' % self.ill_run)
+        fname_illustris_mergers = self.core.fname_illustris_bh_mergers()
         if os.path.exists(fname_illustris_mergers):
             print('blackhole_mergers.hdf5 already downloaded.')
             return
@@ -93,7 +94,7 @@ class SubPartIDs(SubProcess):
         """
 
         # download the original file if it is not in folder.
-        fname_mergers = self.fname_bhs_mergers()
+        fname_mergers = self.core.fname_bhs_mergers()
         # WARNING: I think something is wrong here, wrong file being downloaded here?
         if not os.path.exists(fname_mergers):
             self.download_original_bh_merger_file()
@@ -136,7 +137,7 @@ class SubPartIDs(SubProcess):
         Fix the mergers in ``bhs_mergers_new.hdf5``.
         """
         # get original data
-        fname_mergers = self.fname_bhs_mergers()
+        fname_mergers = self.core.fname_bhs_mergers()
         with h5py.File(fname_mergers, 'r') as f_merg:
             mass_in = f_merg['mass_in'][:]
             mass_out = f_merg['mass_out'][:]
@@ -203,7 +204,7 @@ class SubPartIDs(SubProcess):
         """
 
         # original data
-        fname_all = self.fname_bhs_all()
+        fname_all = self.core.fname_bhs_all()
         with h5py.File(fname_all, 'r') as f_all:
             partIDs_all = f_all['ParticleIDs'][:]
             snap_all = f_all['Snapshot'][:]
@@ -242,7 +243,8 @@ class SubPartIDs(SubProcess):
         Download blackhole details file from Illustris website.
         """
 
-        fname_illustris_details = os.path.join(self.dir_output, 'blackhole_details-ILL%i.hdf5' % self.ill_run)
+        # fname_illustris_details = os.path.join(self.dir_output, 'blackhole_details-ILL%i.hdf5' % self.ill_run)
+        fname_illustris_details = self.core.fname_illustris_bh_details()
         if os.path.exists(fname_illustris_details):
             print('blackhole_details-ILL%i.hdf5 already downloaded.' % self.ill_run)
             return
@@ -259,7 +261,7 @@ class SubPartIDs(SubProcess):
         """
 
         # download the original file if it is not in folder.
-        fname_details = self.fname_bhs_details()
+        fname_details = self.core.fname_bhs_details()
         if not os.path.exists(fname_details):
             self.download_details_file()
 
@@ -296,15 +298,3 @@ class SubPartIDs(SubProcess):
             f_dets_new.create_dataset('id_new', data=partIDs_details, dtype=partIDs_details.dtype.name, chunks=True, compression='gzip', compression_opts=9)
 
         return
-
-    def fname_bhs_mergers(self):
-        fname = os.path.join(self.dir_output, 'bhs_mergers_new.hdf5')
-        return fname
-
-    def fname_bhs_all(self):
-        fname = os.path.join(self.dir_output, 'bhs_all_new.hdf5')
-        return fname
-
-    def fname_bhs_details(self):
-        fname = os.path.join(self.dir_output, 'bhs_details_new.hdf5')
-        return fname

@@ -29,11 +29,11 @@ class TestGoodBadMergers(SubProcess):
             search_bad_black_holes
     """
 
-    def __init__(self, main_proc):
-        super().__init__(main_proc)
+    def __init__(self, core):
+        super().__init__(core)
 
-        fname_goods = self.fname_good_mergers()
-        if not os.path.exists(fname_goods):
+        fname_goods = self.core.fname_good_mergers()
+        if os.path.exists(fname_goods):
             self.needed = False
         else:
             self.needed = True
@@ -43,7 +43,8 @@ class TestGoodBadMergers(SubProcess):
         Test if the mergers are good or bad. Criterion is stated in the description of the TestGoodBadMergers class object.
         """
 
-        with h5py.File(self.dir_output + 'bhs_all_new.hdf5', 'r') as f:
+        fname_all = self.core.fname_bhs_all()
+        with h5py.File(fname_all, 'r') as f:
 
             # get the unique ides in the all bhs dataset, as well as their first appearence (index) and count of appearences (counts)
             unique_part_ids_all, index, counts = np.unique(f['ParticleIDs_new'][:][::-1], return_counts=True, return_index=True)
@@ -52,7 +53,8 @@ class TestGoodBadMergers(SubProcess):
             bad_add = np.where((counts == 1) & (f['BH_Mass'][:][::-1][index] > 1e6))[0]
 
         # read in bad black holes
-        bad_arr = np.genfromtxt('bad_black_holes.txt', dtype=None)
+        fname_bads = self.core.fname_bad_mergers()
+        bad_arr = np.genfromtxt(fname_bads, dtype=None)
 
         bad_ids = bad_arr[:, 0].astype(np.uint64)
 
@@ -63,7 +65,8 @@ class TestGoodBadMergers(SubProcess):
         good = []
 
         # read in merger data
-        with h5py.File(self.dir_output + 'bhs_mergers_new.hdf5', 'r') as f_merg:
+        fname_mergers = self.core.fname_bhs_mergers()
+        with h5py.File(fname_mergers, 'r') as f_merg:
             time = f_merg['time'][:]
             mass_in_new = f_merg['mass_in_new'][:]
             mass_out_new = f_merg['mass_out_new'][:]
@@ -86,12 +89,9 @@ class TestGoodBadMergers(SubProcess):
                     good.append(m)
 
         # read out
-        fname_goods = self.fname_good_mergers()
+        fname_goods = self.core.fname_good_mergers()
         np.savetxt(fname_goods, np.array([np.array(good)]).T)
         return
-
-    def fname_good_mergers(self):
-        return os.path.join(self.dir_output, 'good_mergers.txt')
 
 
 class FindBadBlackHoles(SubProcess):
@@ -131,8 +131,8 @@ class FindBadBlackHoles(SubProcess):
     def __init__(self, main_proc):
         super().__init__(main_proc)
 
-        fname_bads = self.fname_bad_bhs()
-        if not os.path.exists(fname_bads):
+        fname_bads = self.core.fname_bad_mergers()
+        if os.path.exists(fname_bads):
             self.needed = False
         else:
             self.needed = True
@@ -143,7 +143,8 @@ class FindBadBlackHoles(SubProcess):
         """
 
         # get initial information and calculate raw subhalo id number according to Illustris convention
-        with h5py.File(self.dir_output + 'bhs_all_new.hdf5', 'r') as f_all_bhs:
+        fname_all = self.core.fname_bhs_all()
+        with h5py.File(fname_all, 'r') as f_all_bhs:
             part_ids_all = f_all_bhs['ParticleIDs_new'][:]
             snaps_all = f_all_bhs['Snapshot'][:]
             subhalos_all = f_all_bhs['Subhalo'][:]
@@ -173,7 +174,8 @@ class FindBadBlackHoles(SubProcess):
 
         # open the sublink tree file. Keep it open because it is
         # too much information to store it all in memory
-        f_sublink = h5py.File(self.dir_output + 'sublink_short.hdf5', 'r')
+        fname_sublink = self.core.fname_sublink_short()
+        f_sublink = h5py.File(fname_sublink, 'r')
 
         # get the raw IDs from sublink and sort them
         subID_raw_sublink = np.asarray(f_sublink['SubfindID'][:310600757] + f_sublink['SnapNum'][:310600757]*1e12, dtype=np.int64)
@@ -219,10 +221,7 @@ class FindBadBlackHoles(SubProcess):
         # read out
         bad_arr = np.asarray(bad, dtype=[('id', np.dtype(np.uint64)), ('mass', np.dtype(float)), ('snap', np.dtype(np.int32))])
 
-        fname_bads = self.fname_bad_bhs()
+        fname_bads = self.core.fname_bad_mergers()
         np.savetxt(fname_bads, bad_arr)
         f_sublink.close()
         return
-
-    def fname_bad_bhs(self):
-        return os.path.join(self.dir_output, 'bad_black_holes.txt')

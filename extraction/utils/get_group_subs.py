@@ -34,8 +34,8 @@ class GetGroupSubs(SubProcess):
             download_and_add_file_info
     """
 
-    def __init__(self, main_proc, additional_keys=['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass']):
-        super().__init__(main_proc)
+    def __init__(self, core, additional_keys=['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass']):
+        super().__init__(core)
         # self.dir_output = dir_output
         # self.dir_input = dir_input
         # self.ill_run = 1
@@ -49,8 +49,9 @@ class GetGroupSubs(SubProcess):
 
         # If the download timed out previously, figure out where it left off.
         # If not start with first snapshot.
-        if 'subs_with_bhs.hdf5' in os.listdir('./extraction_files'):
-            with h5py.File(self.dir_output + 'subs_with_bhs.hdf5', 'r') as f:
+        fname = self.core.fname_subs_with_bhs()
+        if os.path.exists(fname):
+            with h5py.File(fname, 'r') as f:
                 max_snap = np.asarray(f['Snapshot'][:]).max()
 
             self.start_snap = max_snap + 1
@@ -72,6 +73,8 @@ class GetGroupSubs(SubProcess):
 
         # initialize output dict
         out = {key: [] for key in self.keys}
+        fname = self.core.fname_subs_with_bhs()
+        fname_old = fname + '.old'
 
         # for snap in np.arange(self.start_snap, 136):
         for snap in tqdm.trange(self.start_snap, 136):
@@ -83,7 +86,7 @@ class GetGroupSubs(SubProcess):
             # if any data has been output to file, gather that data into dict.
             # This method is used in case downloads time out in the middle of the run.
             if snap > self.start_snap:
-                with h5py.File(self.dir_output + 'subs_with_bhs.hdf5', 'r') as f_out:
+                with h5py.File(fname, 'r') as f_out:
                     for key in self.keys:
                         out[key] = [f_out[key][:]]
 
@@ -94,10 +97,10 @@ class GetGroupSubs(SubProcess):
 
             # move last dataset and store as backup
             if snap > self.start_snap:
-                os.rename(self.dir_output + 'subs_with_bhs.hdf5', self.dir_output + 'old_subs_with_bhs.hdf5')
+                os.rename(fname, fname_old)
 
             # write new file with updated data.
-            with h5py.File(self.dir_output + 'subs_with_bhs.hdf5', 'w') as f:
+            with h5py.File(fname, 'w') as f:
                 for key in self.keys:
                     out[key] = np.concatenate(out[key])
                     f.create_dataset(key, data=out[key], dtype=out[key].dtype.name, chunks=True, compression='gzip', compression_opts=9)
@@ -106,7 +109,7 @@ class GetGroupSubs(SubProcess):
 
         # if all files have been dowloaded, delete backup file
         if snap == 135:
-            os.remove(self.dir_output + 'old_subs_with_bhs.hdf5')
+            os.remove(fname_old)
 
         return
 

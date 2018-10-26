@@ -22,6 +22,80 @@ from utils import (prepare_sublink_trees, get_group_subs, find_sublink_indices, 
                    download_needed)
 
 
+class Core:
+
+    def __init__(self, dir_output, dir_input,
+                 ill_run=1, max_snap=135, first_snap_with_bhs=30, skip_snaps=[53, 55]):
+        self.dir_output = dir_output
+        self.dir_input = dir_input
+        self.ill_run = ill_run
+        self.ill_run = ill_run
+        self.max_snap = max_snap
+        self.first_snap_with_bhs = first_snap_with_bhs
+        self.skip_snaps = skip_snaps
+
+        if not os.path.isdir(dir_input):
+            raise RuntimeError("Input dir_output '{}' does not exist!".format(dir_input))
+
+        if not os.path.isdir(dir_output):
+            if os.path.exists(dir_output):
+                raise RuntimeError("Output '{}' exists but is not dir_output!".format(dir_output))
+
+            os.mkdir(dir_output)
+
+        return
+
+    def path_output(self, fname):
+        return os.path.join(self.dir_output, fname)
+
+    def fname_subs_with_bhs(self):
+        return self.path_output("subs_with_bhs.hdf5")
+
+    def fname_bhs_snapshot(self, snap):
+        return self.path_output('%i/%i_blackholes.hdf5' % (snap, snap))
+
+    def fname_sublink_short(self):
+        return self.path_output('sublink_short.hdf5')
+
+    def fname_snaps_and_subs(self):
+        return self.path_output('snaps_and_subs_needed.txt')
+
+    def fname_snaps_and_subs_completed(self):
+        return self.path_output('completed_snaps_and_subs.txt')
+
+    def fname_bhs_mergers(self):
+        fname = self.path_output('bhs_mergers_new.hdf5')
+        return fname
+
+    def fname_bhs_all(self):
+        fname = self.path_output('bhs_all_new.hdf5')
+        return fname
+
+    def fname_bhs_details(self):
+        fname = self.path_output('bhs_details_new.hdf5')
+        return fname
+
+    def fname_illustris_bh_mergers(self):
+        fname = self.path_output('blackhole_mergers-ILL%i.hdf5' % self.ill_run)
+        return fname
+
+    def fname_illustris_bh_details(self):
+        fname = self.path_output('blackhole_details-ILL%i.hdf5' % self.ill_run)
+        return fname
+
+    def fname_good_mergers(self):
+        return self.path_output('good_mergers.txt')
+
+    def fname_bad_mergers(self):
+        return self.path_output('bad_mergers.txt')
+
+    def fname_snap_sub_cutout(self, snap, sub):
+        # '%i/%i_sub_cutouts/cutout_%i_%i.hdf5' % (snap, snap, snap, sub)
+        fname = 'cutout_%i_%i.hdf5' % (snap, sub)
+        sub_path = os.path.join('%i' % snap, '%i_sub_cutouts' % snap, fname)
+        return self.path_output(sub_path)
+
+
 class MainProcess:
     """
     MainProcess contains and runs each major piece associated with the Illustris black hole extraction and filtering process.
@@ -52,26 +126,15 @@ class MainProcess:
     FindSubhalosForSearch = get_subhalos_for_download.FindSubhalosForSearch
     DownloadNeeded = download_needed.DownloadNeeded
 
-    ill_run = 1
-    max_snap = 135
-    first_snap_with_bhs = 30
-    skip_snaps = [53, 55]
+    # ill_run = 1
+    # max_snap = 135
+    # first_snap_with_bhs = 30
+    # skip_snaps = [53, 55]
 
-    def __init__(self, dir_output, dir_input=None):
+    def __init__(self, core):
         print(self.__class__.__name__)
-        self.dir_input = dir_input
-        self.dir_output = dir_output
-
-        if not os.path.isdir(dir_input):
-            raise RuntimeError("Input dir_output '{}' does not exist!".format(dir_input))
-
-        if not os.path.isdir(dir_output):
-            if os.path.exists(dir_output):
-                raise RuntimeError("Output '{}' exists but is not dir_output!".format(dir_output))
-
-            os.mkdir(dir_output)
-
-            return
+        self.core = core
+        return
 
     def sublink_extraction(self):
         """
@@ -85,7 +148,7 @@ class MainProcess:
             'keys': ['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass', 'SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID', 'SubhaloSFR'],
         }
 
-        prep_sublink = self.PrepSublink(self, **prep_sublink_kwargs)
+        prep_sublink = self.PrepSublink(self.core, **prep_sublink_kwargs)
         if prep_sublink.needed:
             prep_sublink.download_and_convert_to_short()
             prep_sublink.combine_sublink_shorts()
@@ -105,7 +168,7 @@ class MainProcess:
             'additional_keys': ['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'],
         }
 
-        get_groupcat = self.GetGroupSubs(self, **get_group_subs_kwargs)
+        get_groupcat = self.GetGroupSubs(self.core, **get_group_subs_kwargs)
         if get_groupcat.needed:
             get_groupcat.download_and_add_file_info()
 
@@ -124,7 +187,7 @@ class MainProcess:
             'num_files': 6,
         }
 
-        sublink_indices = self.SublinkIndexFind(self, **find_sublink_indices_kwargs)
+        sublink_indices = self.SublinkIndexFind(self.core, **find_sublink_indices_kwargs)
         if sublink_indices.needed:
             sublink_indices.find_indices()
 
@@ -144,7 +207,7 @@ class MainProcess:
             'num_groupcat_files': 1,
         }
 
-        get_bhs = self.LocateBHs(self, **find_bhs_kwargs)
+        get_bhs = self.LocateBHs(self.core, **find_bhs_kwargs)
         if get_bhs.needed:
             get_bhs.download_bhs_all_snapshots()
             get_bhs.combine_black_hole_files()
@@ -164,7 +227,7 @@ class MainProcess:
             'run_details': False,
         }
 
-        sub_ids = self.SubPartIDs(self, **sub_partIDs_in_mergs_kwargs)
+        sub_ids = self.SubPartIDs(self.core, **sub_partIDs_in_mergs_kwargs)
         if sub_ids.mergers_needed or sub_ids.all_needed or sub_ids.details_needed:
             sub_ids.find_necessary_switches()
 
@@ -195,13 +258,13 @@ class MainProcess:
 
         find_bad_black_holes_kwargs = {}
 
-        bad_bhs = self.FindBadBlackHoles(self, **find_bad_black_holes_kwargs)
+        bad_bhs = self.FindBadBlackHoles(self.core, **find_bad_black_holes_kwargs)
         if bad_bhs.needed:
             bad_bhs.search_bad_black_holes()
 
         test_good_bad_mergers_kwargs = {}
 
-        good_or_bad_mergers = self.TestGoodBadMergers(self, **test_good_bad_mergers_kwargs)
+        good_or_bad_mergers = self.TestGoodBadMergers(self.core, **test_good_bad_mergers_kwargs)
         if good_or_bad_mergers.needed:
             good_or_bad_mergers.test_mergers()
 
@@ -219,7 +282,7 @@ class MainProcess:
             'use_second_sub_back': False,
         }
 
-        gather_subs = self.FindSubhalosForSearch(self, **get_subhalos_for_download_kwargs)
+        gather_subs = self.FindSubhalosForSearch(self.core, **get_subhalos_for_download_kwargs)
         if gather_subs.needed:
             gather_subs.find_subs_to_search()
 
@@ -236,7 +299,7 @@ class MainProcess:
 
         download_needed_kwargs = {}
 
-        download = self.DownloadNeeded(self, **download_needed_kwargs)
+        download = self.DownloadNeeded(self.core, **download_needed_kwargs)
         # this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
         download.download_needed_subhalos()
 
@@ -340,7 +403,8 @@ def main():
     else:
         Main_Process = MainProcess
 
-    main_process = Main_Process(args['dir_output'], dir_input=args['dir_input'])
+    core = Core(args['dir_output'], args['dir_input'])
+    main_process = Main_Process(core)
     for key in keys:
         if args[key]:
             print("Running '{}'".format(key))

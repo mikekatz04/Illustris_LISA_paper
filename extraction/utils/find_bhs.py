@@ -49,8 +49,8 @@ class LocateBHs(SubProcess):
             delet_snap_bh_files
     """
 
-    def __init__(self, main_proc, num_chunk_files_per_snapshot=512, num_groupcat_files=1, first_snap_with_bhs=30, skip_snaps=[53, 55], max_snap=135):
-        super().__init__(main_proc)
+    def __init__(self, core, num_chunk_files_per_snapshot=512, num_groupcat_files=1):
+        super().__init__(core)
         # self.dir_output = dir_output
         # self.dir_input = dir_input
         # self.ill_run = ill_run
@@ -62,7 +62,8 @@ class LocateBHs(SubProcess):
         # self.skip_snaps = skip_snaps
 
         # load which subs have black holes
-        fname = os.path.join(self.dir_output, "subs_with_bhs.hdf5")   # "subs_with_bhs.hdf5"
+        # fname = os.path.join(self.dir_output, "subs_with_bhs.hdf5")   # "subs_with_bhs.hdf5"
+        fname = core.fname_subs_with_bhs()
         with h5py.File(fname, 'r') as f:
             self.snaps = f['Snapshot'][:]
             self.subs = f['SubhaloID'][:]
@@ -71,7 +72,7 @@ class LocateBHs(SubProcess):
         self.reset_black_holes_dict()
 
         # check if this process is needed
-        fname = self.bh_fname()
+        fname = self.core.fname_bhs_all()
         if os.path.exists(fname):
             self.needed = False
             print("\t`LocateBHs` file already exists")
@@ -121,7 +122,7 @@ class LocateBHs(SubProcess):
                 print('Skipped snapshot', snap)
                 continue
 
-            fname = self.snapshot_bh_fname(snap)
+            fname = self.core.fname_bhs_snapshot(snap)
             if os.path.exists(fname):
                 continue
 
@@ -221,7 +222,7 @@ class LocateBHs(SubProcess):
         """
         Concatenate the information in each list of the bh dict and then read them out to a file specific to the bhs in this snapshot.
         """
-        fname = self.snapshot_bh_fname(snap)
+        fname = self.core.fname_bhs_snapshot(snap)
         with h5py.File(fname, 'w') as f:
             for name in self.bhs_dict:
                 output = np.concatenate(self.bhs_dict[name]['values'], axis=0)
@@ -242,7 +243,7 @@ class LocateBHs(SubProcess):
         """
 
         # make sure black hole file is there!!!
-        fname = self.snapshot_bh_fname(snap)
+        fname = self.core.fname_bhs_snapshot(snap)
         if not os.path.exists(fname):
             raise Exception('About to delete files when completed file (%s) is not there.' % fname)
 
@@ -265,7 +266,7 @@ class LocateBHs(SubProcess):
 
         # open snapshot specific files and populate dict
         for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
-            fname = self.snapshot_bh_fname(snap)
+            fname = self.core.fname_bhs_snapshot(snap)
             with h5py.File(fname, 'r') as f:
                 for name in bhs_dict:
                     self.bhs_dict[name]['values'].append(f[name][:])
@@ -280,7 +281,7 @@ class LocateBHs(SubProcess):
         sort = np.argsort(checker, order=('Snapshot', 'Subhalo'))
 
         print('Write out to combined file.')
-        fname = self.bh_fname()
+        fname = self.core.fname_bhs_all()
         with h5py.File(fname, 'w') as f:
             for name in bhs_dict:
                 output = bhs_dict[name]['values'][sort]
@@ -296,16 +297,18 @@ class LocateBHs(SubProcess):
         """
 
         for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
-            fname = self.snapshot_bh_fname(snap)
+            fname = self.core.fname_bhs_snapshot(snap)
             os.remove(fname)
 
         return
 
-    def snapshot_bh_fname(self, snap):
+    '''
+    def fname_bhs_snapshot(self, snap):
         return os.path.join(self.dir_output, '%i/%i_blackholes.hdf5' % (snap, snap))
 
-    def bh_fname(self):
+    def fname_bhs_all(self):
         return os.path.join(self.dir_output, "bhs_all_new.hdf5")
+    '''
 
 
 class LocateBHs_Odyssey(LocateBHs):
