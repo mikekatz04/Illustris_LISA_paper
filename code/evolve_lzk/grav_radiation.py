@@ -17,16 +17,16 @@ Notes
 """
 
 import numpy as np
-from zcode.constants import NWTG, SPLC, YR
 
-from mbhmergers.hardening import Hardening_Mechanism
+from . import Hardening_Mechanism, SPLC, NWTG
 
 _CONST_DIMENS = np.power(NWTG, 3.0)/np.power(SPLC, 5.0)
 
 
-class Grav_Waves(Hardening_Mechanism):
+class Grav_Radiation(Hardening_Mechanism):
 
-    def harden(self, m1, m2, seps, eccs):
+    # def harden(self, m1, m2, seps, eccs):
+    def dadt(self):
         """GW-Driven Hardening and Eccentricity evolution.
 
         Returns
@@ -39,8 +39,13 @@ class Grav_Waves(Hardening_Mechanism):
             Hardening timescale (a / da/dt) due to GW emission.
 
         """
+        m1 = self._evolver.m1[:, np.newaxis]
+        m2 = self._evolver.m2[:, np.newaxis]
+        rads = self._evolver.rads[np.newaxis, :]
+        # eccs = 0.0
 
-        dadt = -_CONST_DIMENS * (64.0/5.0) * m1 * m2 * (m1+m2) * np.power(seps, -3.0)
+        dadt = -_CONST_DIMENS * (64.0/5.0) * m1 * m2 * (m1+m2) * np.power(rads, -3.0)
+        '''
         decdt = np.zeros_like(dadt)
         # Only bother with the eccentricity terms if non-zero
         if np.any(eccs > 0.0):
@@ -51,57 +56,9 @@ class Grav_Waves(Hardening_Mechanism):
 
             dadt *= ecc_fact_a
             decdt *= ecc_fact_e
+        '''
 
-        taus = -seps/dadt
+        # taus = -rads/dadt
+        # return dadt, decdt, taus
 
-        return dadt, decdt, taus
-
-
-# def dadt_gw(m1, m2, rads, ee=0.0):
-#     """Derivative of the semi-major axis in time.
-#     """
-#     eccFact = 1.0
-#     # Only bother with the eccentricity terms if non-zero
-#     if np.any(ee > 0.0):
-#         e2 = np.square(ee)
-#         eccFact = (1 + (73.0/24)*e2 + (37.0/96)*e2*e2)*np.power((1.0-e2), -3.5)
-#
-#     dadt = -_CONST_DIMENS*(64.0/5.0)*m1*m2*(m1+m2)*np.power(rads, -3.0)*eccFact
-#     taus = -rads/dadt
-#
-#     return dadt, taus
-#
-#
-# def dedt_gw(m1, m2, aa, ee=0.0):
-#     """ Derivative of the eccentricity in time """
-#
-#     if(ee == 0.0): return 0.0
-#     e2      = np.square(ee)
-#     eccFact = (ee + (121.0/304)*ee*e2)*np.power((1.0-e2), -2.5)
-#     dedt    = _CONST_DIMENS*(304.0/15.0)*m1*m2*(m1+m2)*np.power(aa, -4.0)*eccFact
-#
-#     return dedt
-
-
-def tau_gw(m1, m2, aa):
-    """ Calculate the GW Inspiral timescale """
-    const = (5.0/256.0)/_CONST_DIMENS
-    mterm = m1*m2*(m1+m2)
-    return const*np.power(aa, 4.0)/mterm
-
-
-def sep_gw(m1, m2, tau=1.0e10*YR):
-    """ Calculate the separation to inspiral within time ``tau`` """
-    mterm = m1*m2*(m1+m2)
-    const = (256.0/5.0)*_CONST_DIMENS
-    return np.power(const*mterm*tau, 0.25)
-
-
-def orbitalFreq(m1, aa, m2=0.0):
-    """ Convert from separation to orbital frequency. """
-    return np.sqrt(NWTG*(m1+m2)/(np.square(np.pi)*np.power(aa, 3.0)))
-
-
-def orbitalSep(m1, ff, m2=0.0):
-    """ Convert from orbital frequency to separation. """
-    return np.power(NWTG*(m1+m2) / (np.square(np.pi)*np.square(ff)), 1.0/3.0)
+        return dadt

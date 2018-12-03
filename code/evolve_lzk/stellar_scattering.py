@@ -1,60 +1,50 @@
 """Methods for calculating flux of stars into the scattering loss-cone.
-
-Methods
--------
--   scattering                 - Calculate loss-cone scattering props based on galaxy parameters.
--   plotScattering             - Illustrate the scattering calculation for a single, sample system.
--   diffusionCoef              - diffusion coefficient for stars in galaxy
--   numStars_all               - Differential number of all stars.
--   numStars_flc               - Differential number of stars in the full loss-cone (FLC).
--   fluxStars_flc              - flux of stars in full loss-cone (FLC)
--   fluxStars_sslc             - flux of stars in steady-state loss-cone (SSLC)
--   interactionCriteria_binary - Characteristic interaction criteria for MBH binary with stars.
--   _MT1999_lnR0inv            - parameter for calculation of steady-state flux
--   dadt_scattering            - Hardening rate for a given flux of stars and binary parameters.
--   netFlux                    - Effective, net flux.
-
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os
+import warnings
+
 import numpy as np
 import scipy as sp
 import scipy.special  # noqa
 from matplotlib import pyplot as plt
 import tqdm
 
-from zcode.constants import MSOL, NWTG, PC
 from zcode import math as zmath
 from zcode import inout as zio
 from zcode import plot as zplot
 
-from mbhmergers.hardening import Hardening_Mechanism
+from . import Hardening_Mechanism, MSOL, NWTG, PC
 
 
 class Scalings:
     """Class to hold Scattering-Rate Scaling Constants.
     """
 
-    def __init__(self, sets, log):
-        self.log = log
-        self.sets = sets
+    DATA_FNAME = "scattering_experiments.json"
+
+    def __init__(self):
+        # self.log = log
+        # self.sets = sets
         self._bound_H = [0.0, np.inf]
         self._bound_K = [0.0, np.inf]
 
         # Get the data filename
+        input_fname = os.path.join(os.path.dirname(__file__), self.DATA_FNAME)
+        '''
         input_fname = os.path.join(sets.DIR_DATA, sets.LC_DATA_FILENAME)
         log.info("Scattering Data filename: '{}'.".format(input_fname))
         if not os.path.isfile(input_fname):
             err = "File not does exist '{}'.".format(input_fname)
             log.error(err)
             raise ValueError(err)
+        '''
 
         # Load Data
         import json
         data = json.load(open(input_fname, 'r'))
         self._store_data(data)
-        log.debug("Data loaded.  Storing interpolants...")
+        # log.debug("Data loaded.  Storing interpolants...")
         # 'H' : Hardening Rate
         self._init_h()
         # 'K' : Eccentricity growth
@@ -101,8 +91,8 @@ class Scalings_SHM06(Scalings):
     Specific for [Sesana, Hardt & Madau 2006]
     """
 
-    def __init__(self, sets, log):
-        super().__init__(sets, log)
+    def __init__(self):
+        super().__init__()
         # Set bounds to zero, and to twice the highest value seen in plots.
         self._bound_H = [0.0, 40.0]
         self._bound_K = [0.0, 0.4]
@@ -198,33 +188,46 @@ class Scalings_SHM06(Scalings):
         return kk
 
 
-class Loss_Cone_Scalings(Hardening_Mechanism):
+class Stellar_Scattering_Scalings(Hardening_Mechanism):
 
-    # def harden(BINS, rads_hard, sets):
-    def harden(self, m1, m2, sep, eccen, rads_hard, dens_stars, vdisp_stars, lc_scalings):
+    def __init__(self, evolver):
+        super().__init__(evolver)
+        self.lc_scalings = Scalings_SHM06()
+        warnings.warn("Using SHM06 Scaling-Relations for LC Scattering")
+        return
+
+    def dadt(self):
         """Loss-Cone Hardening Rates based on simple scaling relations.
 
         Formerly `scaling_harden()`
 
         See [Sesana 2010](2010ApJ...719..851S), Eq.8 & 9
         """
-        # sep = BINS.sep
-        a_a0 = sep/rads_hard
-        # ecc = BINS.eccen
-        # mrats = BINS.m2 / BINS.m1
-        mrats = m2 / m1
-        HH = lc_scalings.H(mrats, a_a0)
+        evol = self._evolver
+        rads = evol.rads[np.newaxis, :]
+        m1 = evol.m1[:, np.newaxis]
+        m2 = evol.m2[:, np.newaxis]
+        vdisp = evol.vdisp[:, np.newaxis]
 
-        dadt = - HH * NWTG * dens_stars * np.square(sep) / vdisp_stars
+        a_a0 = rads / evol.rad_hard[:, np.newaxis]
+        mrats = m2 / m1
+        HH = self.lc_scalings.H(mrats, a_a0)
+
+        dadt = - HH * NWTG * evol.dens_star * np.square(rads) / vdisp
+
+        '''
+        # ecc = BINS.eccen
         dedt = np.zeros_like(dadt)
         if np.any(eccen > 0.0):
-            KK = lc_scalings.K(mrats, a_a0, eccen)
-            dedt[:] = sep * NWTG * dens_stars * HH * KK / vdisp_stars
+            KK = self.lc_scalings.K(mrats, a_a0, eccen)
+            dedt[:] = rads * NWTG * dens_stars * HH * KK / vdisp_stars
 
         return dadt, dedt
+        '''
+        return dadt
 
 
-class Loss_Cone_Explicit(Hardening_Mechanism):
+class Stellar_Scattering_Explicit(Hardening_Mechanism):
 
     def harden(self, m1, m2, sep, rads, eps, periods, j2Circs, diffCoef,
                dist_funcs, inds, rads_hard):
