@@ -279,8 +279,6 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         if verbose:
             print("Running `EvolveLZK.integrate()")
 
-        self.init_integral_arrays()
-
         def printer(init=None, run=None, beg=None):
             if verbose:
                 if beg is not None:
@@ -345,6 +343,9 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         verbose = self._verbose
         if verbose:
             print("EvolveLZK.calculate_timescale()")
+
+        self.init_integral_arrays()
+        self.integrate()
 
         rads = self.rads
         rads_2d = rads[np.newaxis, :]
