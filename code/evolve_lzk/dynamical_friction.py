@@ -9,7 +9,7 @@ import scipy as sp
 # WHICH_BH = constants.WHICH_BH
 # ATTENUATION = constants.ATTENUATION
 
-from . import Hardening_Mechanism, NWTG, MSOL, dvdt_to_dadt
+from . import Hardening_Mechanism, NWTG, MSOL
 
 
 class Dynamical_Friction(Hardening_Mechanism):
@@ -19,14 +19,9 @@ class Dynamical_Friction(Hardening_Mechanism):
     DF_ATTENUATED = True
 
     GAS_VEL_SOFT = 1.0
-    MSTAR = 0.6
     SELF_GRAV_RAD_MULT = 1.0
 
-    def __init__(self):
-        return
-
-    def harden(self, m1, m2, rads, dens_gas, dens_stars, dens_dm, vdisp,
-               rads_hard, mass_stars, rads_sg):
+    def dadt(self):
         """Calculate the dynamical friction hardening rate.
 
         Arguments
@@ -59,49 +54,58 @@ class Dynamical_Friction(Hardening_Mechanism):
             Required if ``attenuated == True``.
 
         """
-        sets = self.sets
+
+        evolver = self._evolver
+        mass_star = evolver.mass_star
+        mstar = evolver.MSTAR * MSOL
+        # Use a fixed Coulomb-Logarithm
+        coulomb = self.COULOMB_LOGARITHM
+
+        rads = evolver.rads
+        vcirc = evolver.vcirc
+
+        vdisp = evolver.vdisp[:, np.newaxis]
+
+        dens_other = evolver.dens_star + evolver.dens_dm
 
         which_bh = self.DF_WHICH_BH
         if which_bh == 1:
-            mass_obj = m1
+            mass_obj = evolver.m1[:, np.newaxis]
         elif which_bh == 2:
-            mass_obj = m2
+            mass_obj = evolver.m2[:, np.newaxis]
         elif which_bh == 0:
-            mass_obj = m1 + m2
+            mass_obj = evolver.mtot[:, np.newaxis]
         else:
             errStr = "Unrecognized value for `self.DF_WHICH_BH` = '{}'!".format(which_bh)
             raise ValueError(errStr)
 
-        # Use a fixed Coulomb-Logarithm
-        coulomb = self.COULOMB_LOGARITHM
-
-        # Binary circular velocity
-        vcirc = _vel_circ(m1, m2, rads)
-
         # Calculate Gas-Drag separately
         gas_vel = vdisp * self.GAS_VEL_SOFT
-        dvdt_g = _dvdt_full(mass_obj, rads, dens_gas, vcirc, gas_vel, coulomb)
+        dvdt_g = _dvdt_full(mass_obj, rads, evolver.dens_gas, vcirc, gas_vel, coulomb)
         # Stop the gas-drag dynamical friction when the viscous-circumbinary-disk takes over
-        if sets.VISC_DISK_FLAG and sets.SELF_GRAV_RAD:
+        if evolver.SELF_GRAV_UNSTABLE:
+            rad_sg = evolver.rad_sg
             # Find where binary separations are larger than circumbinary disk
             #    Make sure self-gravity cutoff is valid (i.e. positive)
-            inds = (rads < rads_sg) & (rads_sg > 0.0)
+            inds = (rads < rad_sg) & (rad_sg > 0.0)
             dvdt_g[inds] = 0.0
-
-        dens_other = dens_stars + dens_dm
 
         # Use smoothly-attenuated DF
         if self.DF_ATTENUATED:
-            dvdt = _dvdt_attenuated(mass_obj, rads, dens_other, vcirc, vdisp, coulomb,
-                                    rads_hard, self.MSTAR*MSOL, mass_stars)
+            rad_hard = evolver.rad_hard[:, np.newaxis]
+            dvdt_o = _dvdt_attenuated(mass_obj, rads, dens_other, vcirc, vdisp, coulomb,
+                                      rad_hard, mstar, mass_star)
         # Use 'full' unattenuated DF everywhere
         else:
-            dvdt = _dvdt_full(mass_obj, rads, dens_other, vcirc, vdisp, coulomb)
+            dvdt_o = _dvdt_full(mass_obj, rads, dens_other, vcirc, vdisp, coulomb)
 
-        dadt, tau = dvdt_to_dadt(rads, vcirc, dvdt)
-        dadt_g, tau_g = dvdt_to_dadt(rads, vcirc, dvdt_g)
+        dvdt = dvdt_o + dvdt_g
+        dadt, tau = self.dvdt_to_dadt(rads, vcirc, dvdt)
 
-        return dadt, dadt_g
+        # dadt, tau = dvdt_to_dadt(rads, vcirc, dvdt)
+        # dadt_g, tau_g = dvdt_to_dadt(rads, vcirc, dvdt_g)
+        # return dadt, dadt_g
+        return dadt
 
 
 def _dvdt_full(mass_obj, rads, dens, vel_obj, vdisp, coul):
@@ -112,12 +116,13 @@ def _dvdt_full(mass_obj, rads, dens, vel_obj, vdisp, coul):
     velocity factor (`velf`) approaches a constant (near unity).  `velf` only matters if
     ``vel_obj << vdisp``, in which case there is an exponential cutoff.
     """
-    velf = vel_obj/(vdisp*np.sqrt(2.0))
-    const = -4.0*np.pi*np.square(NWTG)
-    pref = mass_obj*dens/np.square(vel_obj)
+    velf = vel_obj / (vdisp * np.sqrt(2.0))
+    const = -4 * np.pi * np.square(NWTG)
+    pref = mass_obj * dens / np.square(vel_obj)
     # Calculate error-function term, based on assuming maxwellian velocity distribution
     erfs = np.fabs(sp.special.erf(velf) - (2.0*velf/np.sqrt(np.pi))*np.exp(-np.square(velf)))
-    dvdt = const*pref*erfs*coul
+    # erfs = 1.0
+    dvdt = const * pref * erfs * coul
     return dvdt
 
 
@@ -136,9 +141,9 @@ def _dvdt_attenuated(mass_obj, rads, dens, vel_obj, vdisp, coul, rads_hard, msta
     dvdt_atten = _dvdt_full(mass_obj, rads, dens, vel_obj, vdisp, coul)
 
     # Calculate attentuation factor
-    numStars = mass_stars/mstar
-    atten1 = np.log(numStars)*rads_hard/rads
-    atten2 = np.square(mass_obj/mass_stars)*numStars
+    numStars = mass_stars / mstar
+    atten1 = np.log(numStars) * rads_hard / rads
+    atten2 = np.square(mass_obj / mass_stars) * numStars
     lcAtten = np.maximum(atten1, atten2)
 
     # Apply attentuation to hard-separations
@@ -146,11 +151,3 @@ def _dvdt_attenuated(mass_obj, rads, dens, vel_obj, vdisp, coul, rads_hard, msta
     dvdt_atten[inds] /= lcAtten[inds]
 
     return dvdt_atten
-
-
-def _vel_circ(m1, m2, sep):
-    mtot = m1 + m2
-    mrat = m2 / m1
-    vels = np.sqrt(NWTG*mtot/sep)
-    vels = vels / (1.0 + mrat)
-    return vels
