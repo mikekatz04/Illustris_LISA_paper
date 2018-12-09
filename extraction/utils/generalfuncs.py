@@ -11,7 +11,9 @@ def get(path, params=None):
     This function retrieves files from the Illustris server. See http://www.illustris-project.org/data/docs/api/ for more information on this function.
     """
     # make HTTP GET request to path
-    headers = {"api-key": "3d6cce0a4f31c43ee502cfdeb2302ded"}
+    headers = {"api-key": "3d6cce0a4f31c43ee502cfdeb2302ded"}  # MICHAEL
+    # headers = {"api-key": "5e56c9c74b51312eb4ca083e2c2c619a"}  # LUKE
+
     r = requests.get(path, params=params, headers=headers)
 
     # raise exception if response code is not HTTP SUCCESS (200)
