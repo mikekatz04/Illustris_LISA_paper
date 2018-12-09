@@ -4,6 +4,7 @@ This file controls the Illustris black hole extraction and filtering process.
 
 import os
 import argparse
+import warnings
 
 # from utils.prepare_sublink_trees import PrepSublink
 # from utils.get_group_subs import GetGroupSubs
@@ -209,7 +210,9 @@ class MainProcess:
 
         get_bhs = self.LocateBHs(self.core, **find_bhs_kwargs)
         if get_bhs.needed:
+            print("Downloading bhs all snapshots")
             get_bhs.download_bhs_all_snapshots()
+            print("Combining bh files")
             get_bhs.combine_black_hole_files()
 
         print('Finished finding black hole particle information and created ``bhs_all_new.hdf5`` file.\n')
@@ -369,34 +372,48 @@ def main():
     # default is to run the whole thing
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--all", action="store_true", default=True)
+    parser.add_argument("--all", action="store_true", default=False)
     parser.add_argument("--odyssey", action="store_true", default=True)
     parser.add_argument("--dir_output", type=str, default='./extraction_files/')
     parser.add_argument("--dir_input", type=str, default='/n/ghernquist/Illustris/Runs/L75n1820FP/')
 
-    parser.add_argument("--sublink_extraction", action="store_true")
-    parser.add_argument("--get_group_subs", action="store_true")
-    parser.add_argument("--find_sublink_indices", action="store_true")
-    parser.add_argument("--find_bhs", action="store_true")
-    parser.add_argument("--sub_partIDs_in_mergs", action="store_true")
-    parser.add_argument("--test_good_bad_mergers", action="store_true")
-    parser.add_argument("--download_needed", action="store_true")
-    parser.add_argument("--density_vel_disp_of_subs", action="store_true")
-    parser.add_argument("--create_final_data", action="store_true")
+    # DEF = False
+
+    '''
+    parser.add_argument("--sublink_extraction", action="store_true", default=DEF)
+    parser.add_argument("--get_group_subs", action="store_true", default=DEF)
+    parser.add_argument("--find_sublink_indices", action="store_true", default=DEF)
+    parser.add_argument("--find_bhs", action="store_true", default=DEF)
+    parser.add_argument("--sub_partIDs_in_mergs", action="store_true", default=DEF)
+    parser.add_argument("--test_good_bad_mergers", action="store_true", default=DEF)
+    parser.add_argument("--download_needed", action="store_true", default=DEF)
+    parser.add_argument("--density_vel_disp_of_subs", action="store_true", default=DEF)
+    parser.add_argument("--create_final_data", action="store_true", default=DEF)
+
+    args = vars(parser.parse_args())
+    '''
+
+    keys = [['sublink_extraction', False],
+            ['get_group_subs', False],
+            ['find_sublink_indices', False],
+            ['find_bhs', False],
+            ['sub_partIDs_in_mergs', True],
+            ['test_good_bad_mergers', True],
+            ['get_subhalos_for_download', True],
+            ['download_needed', True],
+            ['density_vel_disp_of_subs', True],
+            ['create_final_data', True]]
+    # 'gather_black_hole_information',
+
+    for key, val in keys:
+        parser.add_argument("--" + key, action='store_true', default=val)
 
     args = vars(parser.parse_args())
 
-    keys = ['sublink_extraction', 'get_group_subs', 'find_sublink_indices', 'find_bhs', 'sub_partIDs_in_mergs', 'test_good_bad_mergers', 'get_subhalos_for_download', 'download_needed', 'density_vel_disp_of_subs', 'create_final_data']  # 'gather_black_hole_information',
-
-    if True not in list(args.values()) or args['all']:
+    if args['all']:
         print('Running all functions')
-        for key in keys:
+        for key, _ in keys:
             args[key] = True
-
-    # else:
-    #     for key in keys:
-    #         if args[key]:
-    #             print('Running', key)
 
     if args['odyssey']:
         Main_Process = MainProcess_Odyssey
@@ -405,7 +422,7 @@ def main():
 
     core = Core(args['dir_output'], args['dir_input'])
     main_process = Main_Process(core)
-    for key in keys:
+    for key, _ in keys:
         if args[key]:
             print("Running '{}'".format(key))
             getattr(main_process, key)()
