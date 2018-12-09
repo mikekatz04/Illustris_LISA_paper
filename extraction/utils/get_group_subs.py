@@ -34,7 +34,8 @@ class GetGroupSubs(SubProcess):
             download_and_add_file_info
     """
 
-    def __init__(self, core, additional_keys=['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass']):
+    def __init__(self, core, additional_keys=['SubhaloCM', 'SubhaloMassType', 'SubhaloPos',
+                                              'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass']):
         super().__init__(core)
         # self.dir_output = dir_output
         # self.dir_input = dir_input
@@ -52,19 +53,33 @@ class GetGroupSubs(SubProcess):
         fname = self.core.fname_subs_with_bhs()
         if os.path.exists(fname):
             with h5py.File(fname, 'r') as f:
-                max_snap = np.asarray(f['Snapshot'][:]).max()
+                # max_snap = np.asarray(f['Snapshot'][:]).max()
+                have_snaps = np.asarray(f['Snapshot'][:])
 
-            self.start_snap = max_snap + 1
-            self.needed = True
+            # max_snap = have_snaps.max()
+            # min_snap = have_snaps.min()
+            # self.start_snap = max_snap + 1
+            # self.needed = True
 
             # if the maximum snap (135) is in there, move on.
-            if max_snap == 135:
-                print("\tGetGroupSubs file info already complete")
-                self.needed = False
+            # if max_snap == 135:
+            #     print("\tGetGroupSubs file info already complete")
+            #     self.needed = False
 
         else:
-            self.start_snap = self.first_snap_with_bhs
-            self.needed = True
+            # self.start_snap = self.first_snap_with_bhs
+            # self.needed = True
+            have_snaps = []
+
+        self.need_snaps = [sn for sn in range(self.core.first_snap_with_bhs, self.max_snap+1)
+                           if (sn not in have_snaps) and (sn not in self.core.skip_snaps)]
+        num_needed = len(self.need_snaps)
+        self.needed = (num_needed > 0)
+        print("\tGetGroupSubs needs info from {} files".format(num_needed))
+        if self.needed:
+            print("\t\t{}...{}".format(self.need_snaps[0], self.need_snaps[-1]))
+
+        return
 
     def download_and_add_file_info(self):
         """
@@ -77,27 +92,34 @@ class GetGroupSubs(SubProcess):
         fname_old = fname + '.old'
 
         # for snap in np.arange(self.start_snap, 136):
-        for snap in tqdm.trange(self.start_snap, 136):
+        # for snap in tqdm.trange(self.start_snap, 136):
+        for snap in tqdm.tqdm(self.need_snaps, desc='snapshots'):
 
             # skip bad snapshots (53, 55 in ill1)
-            if snap in self.snaps_to_skip:
+            if snap in self.core.skip_snaps:
                 continue
 
             # if any data has been output to file, gather that data into dict.
             # This method is used in case downloads time out in the middle of the run.
-            if snap > self.start_snap:
-                with h5py.File(fname, 'r') as f_out:
-                    for key in self.keys:
-                        out[key] = [f_out[key][:]]
+            # if snap > self.start_snap:
+            with h5py.File(fname, 'r') as f_out:
+                for key in self.keys:
+                    out[key] = [f_out[key][:]]
 
             # Load data for this snapshot and add to dictionary of all snapshots
-            out_snap = self.load_snap_subs_with_bhs(snap, self.keys)
+            try:
+                out_snap = self.load_snap_subs_with_bhs(snap, self.keys)
+            except OSError as err:
+                print("\nERROR: snap {}\n".format(snap))
+                print("ERROR: '{}'\n\n".format(err))
+                continue
+
             for key in self.keys:
                 out[key].append(out_snap[key])
 
             # move last dataset and store as backup
-            if snap > self.start_snap:
-                os.rename(fname, fname_old)
+            # if snap > self.start_snap:
+            os.rename(fname, fname_old)
 
             # write new file with updated data.
             with h5py.File(fname, 'w') as f:
