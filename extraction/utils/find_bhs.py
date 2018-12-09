@@ -6,6 +6,8 @@ import h5py
 import numpy as np
 import os
 
+import tqdm
+
 from utils.generalfuncs import get
 from utils import SubProcess
 
@@ -263,9 +265,12 @@ class LocateBHs(SubProcess):
         # reset the dict so it is ready to populate
         self.reset_black_holes_dict()
         bhs_dict = self.bhs_dict
+        print([name for name in bhs_dict])
 
         # open snapshot specific files and populate dict
-        for snap in np.arange(self.first_snap_with_bhs, self.max_snap+1):
+        for snap in tqdm.trange(self.first_snap_with_bhs, self.max_snap+1, desc='Loading BHs'):
+            if snap in self.skip_snaps:
+                continue
             fname = self.core.fname_bhs_snapshot(snap)
             with h5py.File(fname, 'r') as f:
                 for name in bhs_dict:
@@ -276,19 +281,38 @@ class LocateBHs(SubProcess):
             output = np.concatenate(self.bhs_dict[name]['values'], axis=0)
         # to be certain the items are ordered properly, place in a structured array
         # and sort by snapshot and then subhalo.
-        checker = np.array([(bhs_dict['Snapshot']['values'][i], bhs_dict['Subhalo']['values'][i]) for i in range(len(bhs_dict['Subhalo']['values']))], dtype=[('Snapshot', np.dtype(np.uint64)), ('Subhalo', np.dtype(np.uint64))])
+        num_snaps = len(bhs_dict['Subhalo']['values'])
+        dtype = [('Snapshot', np.dtype(np.uint64)), ('Subhalo', np.dtype(np.uint64))]
+        # checker = np.array([(bhs_dict['Snapshot']['values'][i], bhs_dict['Subhalo']['values'][i])
+        #                     for i in range(num_snaps)], dtype=dtype)
+        # sort = np.argsort(checker, order=('Snapshot', 'Subhalo'))
 
+        snaps = []
+        subs = []
+        sort = {key: [] for key in bhs_dict}
+        for ii in tqdm.trange(num_snaps, desc='BHs'):
+            aa = bhs_dict['Snapshot']['values'][ii]
+            bb = bhs_dict['Subhalo']['values'][ii]
+
+            snaps = np.concatenate((snaps, aa))
+            subs = np.concatenate((subs, bb))
+
+        checker = np.core.records.fromarrays([snaps, subs], dtype=dtype)
         sort = np.argsort(checker, order=('Snapshot', 'Subhalo'))
 
         print('Write out to combined file.')
         fname = self.core.fname_bhs_all()
         with h5py.File(fname, 'w') as f:
             for name in bhs_dict:
-                output = bhs_dict[name]['values'][sort]
-                dset = f.create_dataset(name, data=output, dtype=output.dtype.name, chunks=True, compression='gzip', compression_opts=9)
+                vals = np.concatenate(bhs_dict[name]['values'])
+                # print(name, np.shape(vals), np.shape(sort))
+                output = vals[sort]
+                # print("\t", np.shape(output))
+                dset = f.create_dataset(name, data=output, dtype=output.dtype.name,
+                                        chunks=True, compression='gzip', compression_opts=9)
                 dset.attrs['unit'] = bhs_dict[name]['unit']
 
-        self.delete_snap_bh_files()
+        # self.delete_snap_bh_files()
         return
 
     def delet_snap_bh_files(self):
@@ -301,14 +325,6 @@ class LocateBHs(SubProcess):
             os.remove(fname)
 
         return
-
-    '''
-    def fname_bhs_snapshot(self, snap):
-        return os.path.join(self.dir_output, '%i/%i_blackholes.hdf5' % (snap, snap))
-
-    def fname_bhs_all(self):
-        return os.path.join(self.dir_output, "bhs_all_new.hdf5")
-    '''
 
 
 class LocateBHs_Odyssey(LocateBHs):
