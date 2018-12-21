@@ -15,7 +15,7 @@ h = 0.704
 ILL_BH_PART_TYPE = 5   # BH particles correspond to "PartType5"
 
 
-class LocateBHs(SubProcess):
+class Find_BHs(SubProcess):
     """
     This class locates all of the black holes through the simulation as each snapshot. To do this, it downloads all the bh particle information from the snapshot chunks. It also downloads group catalog files for header (offset) information. It uses the snapshot python function provided in the illustris python scripts to locate which subhalos have each black hole particle. It then reads out the data to a file. This process is done separately for each snapshot in case downloading times out.
 
@@ -77,7 +77,7 @@ class LocateBHs(SubProcess):
         fname = self.core.fname_bhs_all()
         if os.path.exists(fname):
             self.needed = False
-            print("\t`LocateBHs` file already exists")
+            print("\t`Find_BHs` file already exists")
         else:
             self.needed = True
 
@@ -327,7 +327,7 @@ class LocateBHs(SubProcess):
         return
 
 
-class LocateBHs_Odyssey(LocateBHs):
+class Find_BHs_Odyssey(Find_BHs):
 
     def __init__(self, *args, **kwargs):
         from illpy_lib.subhalos import particle_hosts

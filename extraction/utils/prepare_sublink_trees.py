@@ -10,9 +10,9 @@ from utils.generalfuncs import get
 from utils import SubProcess
 
 
-class PrepSublink(SubProcess):
+class Prepare_Sublink_Trees(SubProcess):
     """
-    PrepSublink downloads the necessary sublink files from the Illustris server. It then moves the classes we are interested in to a separate file to preserve memory. It then deletes the original file.
+    Prepare_Sublink_Trees downloads the necessary sublink files from the Illustris server. It then moves the classes we are interested in to a separate file to preserve memory. It then deletes the original file.
 
         attributes:
             :param  num_files - (int) - number of sublink files to download starting at zero. This is used because not all files have subhalos with black holes.
