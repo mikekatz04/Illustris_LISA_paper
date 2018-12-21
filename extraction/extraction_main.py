@@ -6,20 +6,20 @@ import os
 import argparse
 import warnings
 
-# from utils.prepare_sublink_trees import PrepSublink
-# from utils.get_group_subs import GetGroupSubs
-# from utils.find_sublink_indices import SublinkIndexFind
-# from utils.find_bhs import LocateBHs
+# from utils.prepare_sublink_trees import Prepare_Sublink_Trees
+# from utils.get_group_subs import Get_Group_Subs
+# from utils.find_sublink_indices import Find_Sublink_Indices
+# from utils.find_bhs import Find_BHs
 
-# from utils.sub_partIDs_in_mergs import SubPartIDs
+# from utils.sub_part_ids import Sub_Part_IDs
 # from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
-# from utils.get_subhalos_for_download import FindSubhalosForSearch
-# from utils.download_needed import DownloadNeeded
+# from utils.get_subhalos_for_download import Get_Subhalos
+# from utils.download_needed import Download_Needed
 # from utils.density_vel_disp_of_subs import DensityProfVelDisp
 # from utils.create_final_data import CreateFinalDataset
 
 from utils import (prepare_sublink_trees, get_group_subs, find_sublink_indices, find_bhs,
-                   sub_partIDs_in_mergs, test_good_bad_mergers, get_subhalos_for_download,
+                   sub_part_ids, test_good_bad_mergers, get_subhalos_for_download,
                    download_needed)
 
 
@@ -109,7 +109,7 @@ class MainProcess:
             get_group_subs
             find_sublink_indices
             find_bhs
-            sub_partIDs_in_mergs
+            sub_part_ids
             test_good_bad_mergers
             get_subhalos_for_download
             download_needed
@@ -117,15 +117,15 @@ class MainProcess:
             create_final_data
     """
 
-    PrepSublink = prepare_sublink_trees.PrepSublink
-    GetGroupSubs = get_group_subs.GetGroupSubs
-    SublinkIndexFind = find_sublink_indices.SublinkIndexFind
-    LocateBHs = find_bhs.LocateBHs
-    SubPartIDs = sub_partIDs_in_mergs.SubPartIDs
+    Prepare_Sublink_Trees = prepare_sublink_trees.Prepare_Sublink_Trees
+    Get_Group_Subs = get_group_subs.Get_Group_Subs
+    Find_Sublink_Indices = find_sublink_indices.Find_Sublink_Indices
+    Find_BHs = find_bhs.Find_BHs
+    Sub_Part_IDs = sub_part_ids.Sub_Part_IDs
     FindBadBlackHoles = test_good_bad_mergers.FindBadBlackHoles
     TestGoodBadMergers = test_good_bad_mergers.TestGoodBadMergers
-    FindSubhalosForSearch = get_subhalos_for_download.FindSubhalosForSearch
-    DownloadNeeded = download_needed.DownloadNeeded
+    Get_Subhalos = get_subhalos_for_download.Get_Subhalos
+    Download_Needed = download_needed.Download_Needed
 
     # ill_run = 1
     # max_snap = 135
@@ -149,7 +149,7 @@ class MainProcess:
             'keys': ['DescendantID', 'SnapNum', 'SubfindID', 'SubhaloID', 'SubhaloLenType', 'SubhaloMass', 'SubhaloMassInHalfRad', 'SubhaloMassType', 'TreeID', 'SubhaloSFR'],
         }
 
-        prep_sublink = self.PrepSublink(self.core, **prep_sublink_kwargs)
+        prep_sublink = self.Prepare_Sublink_Trees(self.core, **prep_sublink_kwargs)
         if prep_sublink.needed:
             prep_sublink.download_and_convert_to_short()
             prep_sublink.combine_sublink_shorts()
@@ -169,7 +169,7 @@ class MainProcess:
             'additional_keys': ['SubhaloCM', 'SubhaloMassType', 'SubhaloPos', 'SubhaloSFR', 'SubhaloVelDisp', 'SubhaloWindMass'],
         }
 
-        get_groupcat = self.GetGroupSubs(self.core, **get_group_subs_kwargs)
+        get_groupcat = self.Get_Group_Subs(self.core, **get_group_subs_kwargs)
         if get_groupcat.needed:
             get_groupcat.download_and_add_file_info()
 
@@ -188,7 +188,7 @@ class MainProcess:
             'num_files': 6,
         }
 
-        sublink_indices = self.SublinkIndexFind(self.core, **find_sublink_indices_kwargs)
+        sublink_indices = self.Find_Sublink_Indices(self.core, **find_sublink_indices_kwargs)
         if sublink_indices.needed:
             sublink_indices.find_indices()
 
@@ -208,7 +208,7 @@ class MainProcess:
             'num_groupcat_files': 1,
         }
 
-        get_bhs = self.LocateBHs(self.core, **find_bhs_kwargs)
+        get_bhs = self.Find_BHs(self.core, **find_bhs_kwargs)
         if get_bhs.needed:
             print("Downloading bhs all snapshots")
             get_bhs.download_bhs_all_snapshots()
@@ -219,29 +219,40 @@ class MainProcess:
 
         return
 
-    def sub_partIDs_in_mergs(self):
+    def sub_part_ids(self):
         """
         # Substitue Particle IDs for Continuity #
             Find all mergers where the low mass black hole ID lives on. Update IDs for all future events so that the more massive bh ID lives on. This adds columns with new IDs to ``bhs_mergers_new.hdf5``, ``bhs_all_new.hdf5``, and ``bhs_details_new.hdf5``. This process works very well but is not perfect. Where this fails, we still keep black holes in the end that are 10M_{seed} (>10^6) (see Kelley et al 2017 for this cut).
         """
         print('\nStart substituting IDs for continuity.')
 
-        sub_partIDs_in_mergs_kwargs = {
-            'run_details': False,
+        sub_part_ids_kwargs = {
+            'run_details': True,
         }
 
-        sub_ids = self.SubPartIDs(self.core, **sub_partIDs_in_mergs_kwargs)
-        if sub_ids.mergers_needed or sub_ids.all_needed or sub_ids.details_needed:
+        FORCE = False
+
+        print("Sub_Part_IDs = ", self.Sub_Part_IDs)
+        sub_ids = self.Sub_Part_IDs(self.core, **sub_part_ids_kwargs)
+
+        if FORCE:
+            warnings.warn("FORCING in `sub_part_ids()`")
+
+        if FORCE or sub_ids.mergers_needed or sub_ids.all_needed or sub_ids.details_needed:
+            print("find_necessary_switches()")
             sub_ids.find_necessary_switches()
 
-        if sub_ids.mergers_needed:
+        if FORCE or sub_ids.mergers_needed:
+            print("add_new_columns_to_merger_file()")
             sub_ids.add_new_columns_to_merger_file()
 
-        if sub_ids.all_needed:
+        if FORCE or sub_ids.all_needed:
+            print("add_new_ids_to_all_bhs_file()")
             sub_ids.add_new_ids_to_all_bhs_file()
 
         # by default the details file is not done
-        if sub_ids.details_needed:
+        if FORCE or sub_ids.details_needed or True:
+            print("add_new_ids_to_details_file()")
             sub_ids.add_new_ids_to_details_file()
 
         print('Finished substituting IDs for continuity and created ``bhs_mergers_new.hdf5`` and ``bhs_details_new.hdf5`` files.\n')
@@ -267,7 +278,8 @@ class MainProcess:
 
         test_good_bad_mergers_kwargs = {}
 
-        good_or_bad_mergers = self.TestGoodBadMergers(self.core, **test_good_bad_mergers_kwargs)
+        good_or_bad_mergers = self.TestGoodBadMergers(
+            self.core, **test_good_bad_mergers_kwargs)
         if good_or_bad_mergers.needed:
             good_or_bad_mergers.test_mergers()
 
@@ -277,7 +289,8 @@ class MainProcess:
     def get_subhalos_for_download(self):
         """
         # Gather Subhalos for Download #
-            Gather all the subhalos associated with black hole mergers, check if they have a required resolution, and then create a file to guide the downloading process.
+            Gather all the subhalos associated with black hole mergers, check if they have a
+            required resolution, and then create a file to guide the downloading process.
         """
         print('\nStart gathering subhalos for download.')
 
@@ -285,11 +298,12 @@ class MainProcess:
             'use_second_sub_back': False,
         }
 
-        gather_subs = self.FindSubhalosForSearch(self.core, **get_subhalos_for_download_kwargs)
+        gather_subs = self.Get_Subhalos(self.core, **get_subhalos_for_download_kwargs)
         if gather_subs.needed:
             gather_subs.find_subs_to_search()
 
-        print('Finished gathering subhalos for download and created file ``snaps_and_subs_needed.txt``.\n')
+        print('Finished gathering subhalos for download and created file'
+              ' ``snaps_and_subs_needed.txt``.\n')
 
         return
 
@@ -302,8 +316,9 @@ class MainProcess:
 
         download_needed_kwargs = {}
 
-        download = self.DownloadNeeded(self.core, **download_needed_kwargs)
-        # this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
+        download = self.Download_Needed(self.core, **download_needed_kwargs)
+        # this one does not check if it is needed.
+        # It downloads based on ``completed_snaps_and_subs.txt``.
         download.download_needed_subhalos()
 
         print('Finished downloading subhalos.\n')
@@ -355,8 +370,9 @@ class MainProcess:
 
 class MainProcess_Odyssey(MainProcess):
 
-    GetGroupSubs = get_group_subs.GetGroupSubs_Odyssey
-    LocateBHs = find_bhs.LocateBHs_Odyssey
+    Get_Group_Subs = get_group_subs.Get_Group_Subs_Odyssey
+    Find_BHs = find_bhs.Find_BHs_Odyssey
+    Sub_Part_IDs = sub_part_ids.Sub_Part_IDs_Odyssey
 
     def sublink_extraction(self):
         print("\t`sublink_extraction` is not needed on Odyssey")
@@ -384,7 +400,7 @@ def main():
     parser.add_argument("--get_group_subs", action="store_true", default=DEF)
     parser.add_argument("--find_sublink_indices", action="store_true", default=DEF)
     parser.add_argument("--find_bhs", action="store_true", default=DEF)
-    parser.add_argument("--sub_partIDs_in_mergs", action="store_true", default=DEF)
+    parser.add_argument("--sub_part_ids", action="store_true", default=DEF)
     parser.add_argument("--test_good_bad_mergers", action="store_true", default=DEF)
     parser.add_argument("--download_needed", action="store_true", default=DEF)
     parser.add_argument("--density_vel_disp_of_subs", action="store_true", default=DEF)
@@ -397,7 +413,7 @@ def main():
             ['get_group_subs', False],
             ['find_sublink_indices', False],
             ['find_bhs', False],
-            ['sub_partIDs_in_mergs', True],
+            ['sub_part_ids', True],
             ['test_good_bad_mergers', True],
             ['get_subhalos_for_download', True],
             ['download_needed', True],

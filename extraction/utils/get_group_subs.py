@@ -16,9 +16,9 @@ except ImportError:
     illpy = None
 
 
-class GetGroupSubs(SubProcess):
+class Get_Group_Subs(SubProcess):
     """
-    GetGroupSubs downloads the necessary group catalog files from the Illustris server. It gathers the information we are interested in and outputs to a file. It then deletes that snapshots group catalog file. This code is designed to pick up where it left off if the downloads time out.
+    Get_Group_Subs downloads the necessary group catalog files from the Illustris server. It gathers the information we are interested in and outputs to a file. It then deletes that snapshots group catalog file. This code is designed to pick up where it left off if the downloads time out.
 
         attributes:
             :param  first_snap_with_bhs - (int) - the first snapshot where black holes appear in the simulation
@@ -174,7 +174,7 @@ class GetGroupSubs(SubProcess):
         return out_snap
 
 
-class GetGroupSubs_Odyssey(GetGroupSubs):
+class Get_Group_Subs_Odyssey(Get_Group_Subs):
 
     def load_snap_subs_with_bhs(self, snap, keys):
 
