@@ -11,7 +11,8 @@ from utils.mbhbinaries import MassiveBlackHoleBinaries, AnalyticApproximations, 
 from utils.evolveFDFA import EvolveFDFA
 from utils.basicmergers import MagicMergers
 from utils.resample import KDEResample, GenerateCatalog
-from utils.parallelsnr import ParallelSNR, parallel_snr_func
+
+from gwsnrcalc.gw_snr_calculator import snr
 
 
 def z_at(coalescence_time, num_interp_points=1000):
@@ -25,7 +26,7 @@ def z_at(coalescence_time, num_interp_points=1000):
 
 def detection_rate_main(
                         num_catalogs, t_obs, duration, fp, evolve_key_guide, kde_key_guide,
-                        evolve_class, merger_rate_kwargs, parallel_kwargs, snr_kwargs,
+                        evolve_class, merger_rate_kwargs, snr_kwargs,
                         only_detectable=False, snr_threshold=8.0):
 
     begin_time = time.time()
@@ -77,23 +78,25 @@ def detection_rate_main(
     st = gc.t_event
     et = 0.0*((st - t_obs) < 0.0) + (st - t_obs)*((st - t_obs) >= 0.0)
 
-    para = ParallelSNR(gc.m1, gc.m2, gc.z_coal, st, et, chi=0.8, snr_kwargs=snr_kwargs)
+    spin = snr_kwargs['spin']
+    snr_out = snr(gc.m1, gc.m2, spin, spin, gc.z_coal, st, et, **snr_kwargs)
 
-    para.prep_parallel(**parallel_kwargs)
-    snr = para.run_parallel(timer=True)
-
-    names = 'cat,t_event,m1,m2,z_coal,snr'
+    names = 'cat,t_event,m1,m2,z_coal,snr,snr_ins,snr_mr'
 
     if only_detectable:
-        inds_keep = np.where(snr > 8.0)[0]
+        inds_keep = np.where(snr_out[snr_kwargs['sensitivity_curves'] + '_wd_all'] > 8.0)[0]
 
     else:
-        inds_keep = np.arange(len(snr))
+        inds_keep = np.arange(len(snr_out[snr_kwargs['sensitivity_curves'] + '_wd_all']))
 
     output = np.core.records.fromarrays(
-                                        [gc.catalog_num[inds_keep], gc.t_event[inds_keep],
-                                         gc.m1[inds_keep], gc.m2[inds_keep], gc.z_coal[inds_keep],
-                                         snr[inds_keep]], names=names)
+                [gc.catalog_num[inds_keep], gc.t_event[inds_keep],
+                 gc.m1[inds_keep], gc.m2[inds_keep], gc.z_coal[inds_keep],
+                 snr_out[snr_kwargs['sensitivity_curves'] + '_wd_all'][inds_keep],
+                 snr_out[snr_kwargs['sensitivity_curves'] + '_wd_ins'],
+                 (snr_out[snr_kwargs['sensitivity_curves'] + '_wd_mrg']**2
+                  + snr_out[snr_kwargs['sensitivity_curves'] + '_wd_rd']**2)**(1/2)],
+                names=names)
 
     print('Total Duration:', time.time()-begin_time)
     return output
@@ -101,8 +104,8 @@ def detection_rate_main(
 
 if __name__ == "__main__":
 
-    num_catalogs = 10000
-    t_obs = 10.0  # years
+    num_catalogs = 10
+    t_obs = 5.0  # years
     duration = 100.0  # years
     fp = 'simulation_input_data.txt'
 
@@ -113,7 +116,7 @@ if __name__ == "__main__":
 
     evolve_key_guide = {
                         'm1': 'mass_new_prev_in', 'm2': 'mass_new_prev_out', 'z': 'redshift',
-                        'separation': 'separation', 'gamma': 'gamma',
+                        'separation': 'separation', 'star_gamma': 'star_gamma',
                         'vel_disp_1': 'vel_disp_prev_in',  'vel_disp_2': 'vel_disp_prev_out'}
 
     evolve_class = EvolveFDFA
@@ -123,15 +126,19 @@ if __name__ == "__main__":
 
     merger_rate_kwargs = {'Vc': 106.5**3, 'dz': 0.001, 'zmax': 10.0}
 
-    snr_kwargs = {
-                  'wd_noise': True, 'num_points': 2048,
-                  'sensitivity_curve': 'LPA', 'prefactor': np.sqrt(16./5.)}
-
-    parallel_kwargs = {'num_processors': None, 'num_splits': 1000, 'verbose': 10}
+    snr_kwargs = {'spin': 0.8, 'signal_type': ['all', 'ins', 'mrg', 'rd'],
+                  'wd_noise': 'HB_wd_noise', 'num_points': 2048, 'add_wd_noise': 'True',
+                  'sensitivity_curves': 'LPA', 'prefactor': np.sqrt(16./5.),
+                  'num_processors': -1, 'num_splits': 1000, 'verbose': 20}
 
     check = detection_rate_main(
                 num_catalogs, t_obs, duration, fp, evolve_key_guide, kde_key_guide, evolve_class,
-                merger_rate_kwargs, parallel_kwargs, snr_kwargs, only_detectable=False,
+                merger_rate_kwargs, snr_kwargs, only_detectable=False,
                 snr_threshold=8.0)
+
+    #import matplotlib.pyplot as plt
+
+    #plt.hist()
+
     import pdb
     pdb.set_trace()
