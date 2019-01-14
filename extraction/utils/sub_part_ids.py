@@ -351,13 +351,9 @@ class Sub_Part_IDs(SubProcess):
             change['id_remove'][inds_fix] = change['id_keep'][i]
             # print(i)
 
-            if i > 5:
-                break
-
         # read out
         fname_details = self.core.fname_bhs_details()
         print("Writing new IDs to '{}'".format(fname_details))
-        fname_details = os.path.realpath(fname_details)
         with h5py.File(fname_details, 'a') as f_dets_new:
             key = 'id_new'
             if key in f_dets_new:
