@@ -6,34 +6,23 @@ import os
 import argparse
 import warnings
 
-# from utils.prepare_sublink_trees import Prepare_Sublink_Trees
-# from utils.get_group_subs import Get_Group_Subs
-# from utils.find_sublink_indices import Find_Sublink_Indices
-# from utils.find_bhs import Find_BHs
-
-# from utils.sub_part_ids import Sub_Part_IDs
-# from utils.test_good_bad_mergers import FindBadBlackHoles, TestGoodBadMergers
-# from utils.get_subhalos_for_download import Get_Subhalos
-# from utils.download_needed import Download_Needed
-# from utils.density_vel_disp_of_subs import DensityProfVelDisp
-# from utils.create_final_data import CreateFinalDataset
-
 from utils import (prepare_sublink_trees, get_group_subs, find_sublink_indices, find_bhs,
                    sub_part_ids, test_good_bad_mergers, get_subhalos_for_download,
-                   download_needed)
+                   download_needed, density_vel_disp, create_final_data)
+
+DEF_INPUT = '/n/ghernquist/Illustris/Runs/L75n1820FP/'
+# DEF_OUTPUT = "./extraction_files/"
+# DEF_OUTPUT = "./fs3_extraction-files/"
+DEF_OUTPUT = "./regal_extraction-files/"
 
 
 class Core:
 
     def __init__(self, dir_output, dir_input,
                  ill_run=1, max_snap=135, first_snap_with_bhs=30, skip_snaps=[53, 55]):
-        self.dir_output = dir_output
-        self.dir_input = dir_input
-        self.ill_run = ill_run
-        self.ill_run = ill_run
-        self.max_snap = max_snap
-        self.first_snap_with_bhs = first_snap_with_bhs
-        self.skip_snaps = skip_snaps
+
+        dir_output = os.path.realpath(dir_output)
+        dir_input = os.path.realpath(dir_input)
 
         if not os.path.isdir(dir_input):
             raise RuntimeError("Input dir_output '{}' does not exist!".format(dir_input))
@@ -43,6 +32,14 @@ class Core:
                 raise RuntimeError("Output '{}' exists but is not dir_output!".format(dir_output))
 
             os.mkdir(dir_output)
+
+        self.dir_output = dir_output
+        self.dir_input = dir_input
+        self.ill_run = ill_run
+        self.ill_run = ill_run
+        self.max_snap = max_snap
+        self.first_snap_with_bhs = first_snap_with_bhs
+        self.skip_snaps = skip_snaps
 
         return
 
@@ -96,6 +93,21 @@ class Core:
         sub_path = os.path.join('%i' % snap, '%i_sub_cutouts' % snap, fname)
         return self.path_output(sub_path)
 
+    def fname_density_profiles(self):
+        fname = 'density_profiles.txt'
+        fname = self.path_output(fname)
+        return fname
+
+    def fname_vel_disp(self):
+        fname = 'velocity_dispersions.txt'
+        fname = self.path_output(fname)
+        return fname
+
+    def fname_final_data(self):
+        fname = 'simulation_input_data.txt'
+        fname = self.path_output(fname)
+        return fname
+
 
 class MainProcess:
     """
@@ -113,7 +125,7 @@ class MainProcess:
             test_good_bad_mergers
             get_subhalos_for_download
             download_needed
-            density_vel_disp_of_subs
+            density_vel_disp
             create_final_data
     """
 
@@ -126,6 +138,8 @@ class MainProcess:
     TestGoodBadMergers = test_good_bad_mergers.TestGoodBadMergers
     Get_Subhalos = get_subhalos_for_download.Get_Subhalos
     Download_Needed = download_needed.Download_Needed
+    Dens_Vel_Disp = density_vel_disp.Density_Vel_Disp
+    Create_Final_Data = create_final_data.Create_Final_Data
 
     # ill_run = 1
     # max_snap = 135
@@ -251,7 +265,7 @@ class MainProcess:
             sub_ids.add_new_ids_to_all_bhs_file()
 
         # by default the details file is not done
-        if FORCE or sub_ids.details_needed or True:
+        if FORCE or sub_ids.details_needed:
             print("add_new_ids_to_details_file()")
             sub_ids.add_new_ids_to_details_file()
 
@@ -325,24 +339,22 @@ class MainProcess:
 
         return
 
-    def density_vel_disp_of_subs(self):
+    def density_vel_disp(self):
         """
         # Calculate Density Profiles and Stellar Velocity Dispersions #
             This calculates density profiles and velocity dispersions for the mergers. It gets density profiles for all particle types in remnant black hole host galaxies. Stellar velocity dispersions are calcualted for all merger-related galaxies. If a fit does not converge, the merger is no longer considered part of our catalog.
         """
         print('\nStart calculating profiles and dispersions.')
 
-        density_vel_disp_of_subs_kwargs = {
-            'dir_output': self.dir_output,
-        }
+        density_vel_disp_kwargs = {}
 
-        dens_vel = DensityProfVelDisp(**density_vel_disp_of_subs_kwargs)
-        # this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
+        dens_vel = self.Dens_Vel_Disp(self.core, **density_vel_disp_kwargs)
+        # this one does not check if it is needed. downloads based on `completed_snaps_and_subs.txt`
 
         if dens_vel.needed:
             dens_vel.fit_main()
 
-        print('Finished calculating profiles and dispersions and produced files ``density_profilesl.txt`` and ``velocity_dispersion.txt``.\n')
+        print('Finished calculating profiles and dispersions and produced files ``density_profiles.txt`` and ``velocity_dispersion.txt``.\n')
 
         return
 
@@ -354,33 +366,37 @@ class MainProcess:
         print('\nStart generating final dataset.')
 
         create_final_data_kwargs = {
-            'dir_output': self.dir_output,
+            # 'dir_output': self.dir_output,
         }
 
-        final_data = CreateFinalDataset(**create_final_data_kwargs)
-        # this one does not check if it is needed. It downloads based on ``completed_snaps_and_subs.txt``.
+        final_data = self.Create_Final_Data(self.core, **create_final_data_kwargs)
 
         if final_data.needed:
             final_data.create_final_data()
 
-        print('Finished generating final dataset and created file ``simulation_input_data.txt``.\n')
+        print('Finished generating final dataset and created file `simulation_input_data.txt`.\n')
 
         return
 
 
 class MainProcess_Odyssey(MainProcess):
 
+    Prepare_Sublink_Trees = prepare_sublink_trees.Prepare_Sublink_Trees_Odyssey
+    Find_Sublink_Indices = find_sublink_indices.Find_Sublink_Indices_Odyssey
     Get_Group_Subs = get_group_subs.Get_Group_Subs_Odyssey
     Find_BHs = find_bhs.Find_BHs_Odyssey
     Sub_Part_IDs = sub_part_ids.Sub_Part_IDs_Odyssey
+    Download_Needed = download_needed.Download_Needed_Odyssey
 
+    '''
     def sublink_extraction(self):
         print("\t`sublink_extraction` is not needed on Odyssey")
         return
+    '''
 
-    def find_sublink_indices(self):
-        print("\tWARNING: skipping `find_sublink_indices` on Odyssey!")
-        return
+    # def find_sublink_indices(self):
+    #     print("\tWARNING: skipping `find_sublink_indices` on Odyssey!")
+    #     return
 
 
 def main():
@@ -388,12 +404,12 @@ def main():
     # default is to run the whole thing
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--all", action="store_true", default=False)
+    parser.add_argument("-a", "--all", action="store_true", default=False)
     parser.add_argument("--odyssey", action="store_true", default=True)
-    parser.add_argument("--dir_output", type=str, default='./extraction_files/')
-    parser.add_argument("--dir_input", type=str, default='/n/ghernquist/Illustris/Runs/L75n1820FP/')
+    parser.add_argument("--dir_output", type=str, default=DEF_OUTPUT)
+    parser.add_argument("--dir_input", type=str, default=DEF_INPUT)
 
-    # DEF = False
+    DEF = False
 
     '''
     parser.add_argument("--sublink_extraction", action="store_true", default=DEF)
@@ -403,22 +419,22 @@ def main():
     parser.add_argument("--sub_part_ids", action="store_true", default=DEF)
     parser.add_argument("--test_good_bad_mergers", action="store_true", default=DEF)
     parser.add_argument("--download_needed", action="store_true", default=DEF)
-    parser.add_argument("--density_vel_disp_of_subs", action="store_true", default=DEF)
+    parser.add_argument("--density_vel_disp", action="store_true", default=DEF)
     parser.add_argument("--create_final_data", action="store_true", default=DEF)
 
     args = vars(parser.parse_args())
     '''
 
-    keys = [['sublink_extraction', False],
-            ['get_group_subs', False],
-            ['find_sublink_indices', False],
-            ['find_bhs', False],
-            ['sub_part_ids', True],
-            ['test_good_bad_mergers', True],
-            ['get_subhalos_for_download', True],
-            ['download_needed', True],
-            ['density_vel_disp_of_subs', True],
-            ['create_final_data', True]]
+    keys = [['sublink_extraction', DEF],
+            ['get_group_subs', DEF],
+            ['find_sublink_indices', DEF],
+            ['find_bhs', DEF],
+            ['sub_part_ids', DEF],
+            ['test_good_bad_mergers', DEF],
+            ['get_subhalos_for_download', DEF],
+            ['download_needed', DEF],
+            ['density_vel_disp', DEF],
+            ['create_final_data', DEF]]
     # 'gather_black_hole_information',
 
     for key, val in keys:
