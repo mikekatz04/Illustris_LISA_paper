@@ -334,7 +334,8 @@ class Find_BHs_Odyssey(Find_BHs):
         super().__init__(*args, **kwargs)
 
         print("Loading BH hosts data for all snapshots")
-        self.bh_hosts = particle_hosts.load_bh_hosts(self.ill_run)
+        # self.bh_hosts = particle_hosts.load_bh_hosts(self.ill_run)
+        self.bh_hosts = particle_hosts._load_bh_hosts_table(self.ill_run)
         print("\thosts loaded")
         return
 
