@@ -224,7 +224,7 @@ class TestGoodBadMergers(SubProcess):
             mass_in_new = f_merg['mass_in_new'][:]
             mass_out_new = f_merg['mass_out_new'][:]
             id_in_new = f_merg['id_in_new'][:]
-            id_out_new = f_merg['id_out_new']
+            id_out_new = f_merg['id_out_new'][:]
 
         print('find good/bad')
         for m in range(len(time)):
