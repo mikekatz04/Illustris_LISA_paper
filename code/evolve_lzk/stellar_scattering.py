@@ -67,21 +67,25 @@ class Scalings:
     def _calc_K(self, *args):
         return None
 
+    '''
     def _bound(self, val, bounds):
         # No lower than minimum
         val = np.maximum(val, bounds[0])
         # No higher than maximum
         val = np.minimum(val, bounds[1])
         return val
+    '''
 
     def H(self, *args):
         hh = self._calc_H(*args)
-        hh = self._bound(hh, self._bound_H)
+        # hh = self._bound(hh, self._bound_H)
+        hh = np.clip(hh, *self._bound_H)
         return hh
 
     def K(self, *args):
         kk = self._calc_K(*args)
-        kk = self._bound(kk, self._bound_K)
+        # kk = self._bound(kk, self._bound_K)
+        kk = np.clip(kk, *self._bound_K)
         return kk
 
 
@@ -207,7 +211,7 @@ class Stellar_Scattering_Scalings(Hardening_Mechanism):
         rads = evol.rads[np.newaxis, :]
         m1 = evol.m1[:, np.newaxis]
         m2 = evol.m2[:, np.newaxis]
-        vdisp = evol.vdisp[:, np.newaxis]
+        vdisp = evol.vdisp
 
         a_a0 = rads / evol.rad_hard[:, np.newaxis]
         mrats = m2 / m1
