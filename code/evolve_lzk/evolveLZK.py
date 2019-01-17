@@ -22,7 +22,7 @@ import numpy as np
 # import pdb
 
 import zcode.math as zmath
-import zcode.astro as zastro
+# import zcode.astro as zastro
 
 import cosmopy
 
@@ -50,11 +50,12 @@ class EvolveLZK(MassiveBlackHoleBinaries):
     PROFILE_BMAX_BMIN_RATIO = 10.0
 
     MSTAR = 0.6
+    PARTICLE_NAMES = ['dm', 'gas', 'star']
 
     # def __init__(self, m1, m2, vel_disp_1, vel_disp_2, star_gamma, separation, redz, e_0=0.0):
     def __init__(self, fname, e_0=0.0, verbose=False):
-        names = ['dm', 'gas', 'star']
-        self._names = names
+        # names = ['dm', 'gas', 'star']
+        # self._names = names
         num_steps = self.NUM_STEPS
 
         input_data = np.genfromtxt(fname, names=True, dtype=None)
@@ -74,7 +75,7 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         self.snaps = np.array([input_data[kk] for kk in keys_snaps]).T
 
         # keys_gammas = ['dm_gamma', 'gas_gamma', 'star_gamma']
-        self.gammas = np.array([-input_data[kk + "_gamma"] for kk in names]).T
+        # self.gammas = np.array([-input_data[kk + "_gamma"] for kk in names]).T
 
         # m2, m1 = masses.T
         # mt = m1 + m2
@@ -91,24 +92,36 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         self.tage_form = self._cosmo.age(self.redz_form).cgs.value
 
         self.sep0 = input_data['separation']*1000*PC
-        self.vdisp = input_data['vel_disp_fin_out'] * 1e5
+        self.gal_vdisp = input_data['vel_disp_fin_out'] * 1e5
         self.gal_mstar = input_data['stellar_mass_fin_out'] * MSOL
         self.gal_mtot = input_data['total_mass_fin_out'] * MSOL
+        # self.dens_prof_star = [input_data['star_norm'] * MSOL, input_data['star_gamma']]
+        # self.dens_prof_gas = [input_data['gas_norm'] * MSOL, input_data['gas_gamma']]
+        # self.dens_prof_dm = [input_data['dm_norm'] * MSOL, input_data['dm_gamma']]
+        # These are for radii in units of 1 pc, and gamma is the negative value
+        norms = [input_data[nn + "_norm"] * MSOL for nn in self.PARTICLE_NAMES]
+        gammas = [input_data[nn + "_gamma"] for nn in self.PARTICLE_NAMES]
+        self._dens_prof_norms = np.array(norms)
+        self._dens_prof_gammas = np.array(gammas)
+
+        print("_dens_prof_norms.shape = ", self._dens_prof_norms.shape)
+        # self.mdot = zastro.eddington_accretion(mt)
+        warnings.warn("CHECK UNITS OF MDOT")
+        self.mdot = input_data['mdot_sum']
+
         self.eccen = e_0
 
         self.num_binaries = self.m1.size
         self.num_steps = num_steps
         self._shape = (self.num_binaries, self.num_steps)
+        # These are all in CGS
         self.rad_isco = 3 * radius_schwarzschild(self.m2)
         sep_extr = [self.rad_isco.min(), self.sep0.max()]
+        # print("sep_extr = ", sep_extr, np.array(sep_extr)/PC)
         self.rads = np.logspace(*np.log10(sep_extr), self.NUM_STEPS)
 
         # Binary circular velocity
         self.vcirc = vel_circ(mt[:, np.newaxis], mr[:, np.newaxis], self.rads[np.newaxis, :])
-
-        # TODO: FIX THIS accretion rates needed from Illustris
-        warnings.warn("Fix accretion rates!")
-        self.mdot = zastro.eddington_accretion(mt)
 
         if verbose:
             print("Mtot = " + zmath.stats_str(mt, log=True))
@@ -117,23 +130,30 @@ class EvolveLZK(MassiveBlackHoleBinaries):
             print("sepa = " + zmath.stats_str(self.sep0, log=False))
             print("gal_mstar = " + zmath.stats_str(self.gal_mstar, log=True))
             print("gal_mtot = " + zmath.stats_str(self.gal_mtot, log=True))
-            for gg, nn in zip(self.gammas.T, names):
-                print("{} = ".format(nn) + zmath.stats_str(gg))
+            # for gg, nn in zip(self.gammas.T, names):
+            #     print("{} = ".format(nn) + zmath.stats_str(gg))
+            for ii, pn in enumerate(self.PARTICLE_NAMES):
+                aa = self._dens_prof_norms[ii]
+                gg = self._dens_prof_gammas[ii]
+                print("{}".format(pn))
+                print("\tnorms  = " + zmath.stats_str(aa))
+                print("\tgammas = " + zmath.stats_str(-gg))
 
         self.init_mass_profile_arrays()
+        self.init_integral_arrays()
         self.calc_critical_radii()
 
         return
 
     def init_mass_profile_arrays(self):
-        SF_EFF_FRAC = 0.2
-        RMAX_FACT = 5.0
+        # SF_EFF_FRAC = 0.2
+        # RMAX_FACT = 5.0
         PROFILE_POWLAW_MAX = -0.1
         # PROFILE_POWLAW_MAX = -2.9
         PROFILE_POWLAW_MIN = -2.9
 
         verbose = self._verbose
-        names = self._names
+        # names = self._names
 
         if verbose:
             print("Running `EvolveLZK.init_mass_profile_arrays()")
@@ -142,45 +162,26 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         warnings.warn("FIX TEMPORARY MASS PROFILES!")
 
         rads = self.rads
-        mstar = self.gal_mstar
-        mtot = self.gal_mtot
-        mdm = 5 * mstar
-
-        mgas = mstar / SF_EFF_FRAC
-        mdm = np.maximum(mdm, mtot - (mstar + mgas))
-        mdm = np.minimum(mdm, mtot - mstar)
-
-        mgas = np.maximum(mtot - (mstar + mdm), 0.0)
-        if verbose:
-            print("dm = " + zmath.stats_str(mdm/mtot))
-            print("gas = " + zmath.stats_str(mgas/mtot))
-            print("star = " + zmath.stats_str(mstar/mtot))
-
-        rmax = self.sep0 * RMAX_FACT
         vols = 4*np.pi * np.power(rads, 3) / 3
         dv = np.concatenate(([vols[0]], vols[1:] - vols[:-1]))
         # dv = 4*np.pi*np.power(rads, 2) * np.concatenate(([rads[0]], np.diff(rads)))
 
-        gammas = np.clip(self.gammas, PROFILE_POWLAW_MIN, PROFILE_POWLAW_MAX)
-        # NOTE: this ordering must match `_names` (and thus `gammas`)
-        mass_tots = [mdm, mgas, mstar]
-        # dens = []
-        # mass = []
-        for mm, gg, nn in zip(mass_tots, gammas.T, names):
-            dd = ((gg+3) / (4*np.pi*(PC**3))) * mm / np.power(rmax/PC, gg+3)
-            _dens = dd[:, np.newaxis] * np.power(rads[np.newaxis, :]/PC, gg[:, np.newaxis])
-            # dens.append(_dens)
-            _mass = np.cumsum(_dens * dv[np.newaxis, :], axis=-1)
+        for ii, pt in enumerate(self.PARTICLE_NAMES):
+            aa = self._dens_prof_norms[ii]
+            gg = self._dens_prof_gammas[ii]
+            gg = np.clip(gg, PROFILE_POWLAW_MIN, PROFILE_POWLAW_MAX)
+            dens = aa[:, np.newaxis] * np.power(rads[np.newaxis, :]/PC, -gg[:, np.newaxis])
+            mass = np.cumsum(dens * dv[np.newaxis, :], axis=-1)
             # mass.append(_mass)
-            if verbose:
-                print(nn + " dens = " + zmath.stats_str(dd*PC**3/MSOL))
-
-            dvar = "dens_" + nn
-            mvar = "mass_" + nn
+            dvar = "dens_" + pt
+            mvar = "mass_" + pt
             if verbose:
                 print("Setting `{}`, `{}`".format(dvar, mvar))
-            setattr(self, dvar, _dens)
-            setattr(self, mvar, _mass)
+            setattr(self, dvar, dens)
+            setattr(self, mvar, mass)
+
+        warnings.warn("Using fixed velocity dispersion!")
+        self.vdisp = self.gal_vdisp[:, np.newaxis] * np.ones_like(rads)[np.newaxis, :]
 
         return
 
@@ -194,7 +195,7 @@ class EvolveLZK(MassiveBlackHoleBinaries):
 
         # Sphere of Influence of BH
         #     Use Velocity Dispersion: R_infl = GM_bh/sigma^2
-        rad_infl = NWTG * m1 / np.square(self.vdisp)
+        rad_infl = NWTG * m1 / np.square(self.gal_vdisp)
 
         # Stellar Effective Radius and Mass
         #    Scale stellar radius to that of MW (0.5pc) (mass 2e12 Msol),
@@ -333,7 +334,7 @@ class EvolveLZK(MassiveBlackHoleBinaries):
 
         self.dadt[:] = self.dadt_df + self.dadt_sc + self.dadt_cd + self.dadt_gw
 
-        print("\nAll done after {}".format(datetime.now()-beg_all))
+        print("\nAll done after {}".format(datetime.now() - beg_all))
 
         return
 
