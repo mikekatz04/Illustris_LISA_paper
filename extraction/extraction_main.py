@@ -3,6 +3,7 @@ This file controls the Illustris black hole extraction and filtering process.
 """
 
 import os
+import sys
 import argparse
 import warnings
 
@@ -15,10 +16,12 @@ DEF_INPUT = '/n/ghernquist/Illustris/Runs/L75n1820FP/'
 # DEF_OUTPUT = "./fs3_extraction-files/"
 DEF_OUTPUT = "./regal_extraction-files/"
 
+DOUBLE_CHECK_RECREATE = False
+
 
 class Core:
 
-    def __init__(self, dir_output, dir_input,
+    def __init__(self, dir_output, dir_input, recreate=False, debug=False,
                  ill_run=1, max_snap=135, first_snap_with_bhs=30, skip_snaps=[53, 55]):
 
         dir_output = os.path.realpath(dir_output)
@@ -40,6 +43,9 @@ class Core:
         self.max_snap = max_snap
         self.first_snap_with_bhs = first_snap_with_bhs
         self.skip_snaps = skip_snaps
+
+        self.RECREATE = recreate
+        self.DEBUG = debug
 
         return
 
@@ -365,9 +371,7 @@ class MainProcess:
         """
         print('\nStart generating final dataset.')
 
-        create_final_data_kwargs = {
-            # 'dir_output': self.dir_output,
-        }
+        create_final_data_kwargs = {}
 
         final_data = self.Create_Final_Data(self.core, **create_final_data_kwargs)
 
@@ -405,25 +409,13 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--all", action="store_true", default=False)
+    parser.add_argument("-r", "--recreate", action="store_true", default=False)
+    parser.add_argument("-d", "--debug", action="store_true", default=True)
     parser.add_argument("--odyssey", action="store_true", default=True)
     parser.add_argument("--dir_output", type=str, default=DEF_OUTPUT)
     parser.add_argument("--dir_input", type=str, default=DEF_INPUT)
 
     DEF = False
-
-    '''
-    parser.add_argument("--sublink_extraction", action="store_true", default=DEF)
-    parser.add_argument("--get_group_subs", action="store_true", default=DEF)
-    parser.add_argument("--find_sublink_indices", action="store_true", default=DEF)
-    parser.add_argument("--find_bhs", action="store_true", default=DEF)
-    parser.add_argument("--sub_part_ids", action="store_true", default=DEF)
-    parser.add_argument("--test_good_bad_mergers", action="store_true", default=DEF)
-    parser.add_argument("--download_needed", action="store_true", default=DEF)
-    parser.add_argument("--density_vel_disp", action="store_true", default=DEF)
-    parser.add_argument("--create_final_data", action="store_true", default=DEF)
-
-    args = vars(parser.parse_args())
-    '''
 
     keys = [['sublink_extraction', DEF],
             ['get_group_subs', DEF],
@@ -448,15 +440,31 @@ def main():
             args[key] = True
 
     if args['odyssey']:
+        print("Running in Odyssey mode!")
         Main_Process = MainProcess_Odyssey
     else:
         Main_Process = MainProcess
 
-    core = Core(args['dir_output'], args['dir_input'])
+    if args['recreate'] or args['debug']:
+        for key, _ in keys:
+            print("{:>30s}: {}".format(key, args[key]))
+
+    if args['recreate']:
+        print("\nWARNING: running in `recreate` mode!\n")
+        if DOUBLE_CHECK_RECREATE:
+            arg = input("\nConfirm recreate all files Y/[N] : ").strip().lower()
+
+            if not arg.startswith('y'):
+                print("Aborting.")
+                sys.exit(0)
+
+    core = Core(args['dir_output'], args['dir_input'], args['recreate'], args['debug'])
     main_process = Main_Process(core)
     for key, _ in keys:
         if args[key]:
-            print("Running '{}'".format(key))
+            if args['debug']:
+                print("Running '{}'".format(key))
+
             getattr(main_process, key)()
 
     return
