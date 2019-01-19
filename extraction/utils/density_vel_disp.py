@@ -44,16 +44,18 @@ class Density_Vel_Disp(SubProcess):
 
         fname_dens = core.fname_density_profiles()
         fname_vdis = core.fname_vel_disp()
-        exist_dens = os.path.exists(fname_dens)
-        exist_vdis = os.path.exists(fname_vdis)
-        if exist_dens and exist_vdis:
-            self.needed = False
-            print("Files already exist ('{}', '{}')".format(fname_dens, fname_vdis))
-        else:
-            self.needed = True
-            print("Missing files")
-            print("\t{}: {}".format(fname_dens, exist_dens))
-            print("\t{}: {}".format(fname_vdis, exist_vdis))
+        self.needed = self._check_needed(fname_dens, fname_vdis)
+
+        # exist_dens = os.path.exists(fname_dens)
+        # exist_vdis = os.path.exists(fname_vdis)
+        # if exist_dens and exist_vdis:
+        #     self.needed = False
+        #     print("Files already exist ('{}', '{}')".format(fname_dens, fname_vdis))
+        # else:
+        #     self.needed = True
+        #     print("Missing files")
+        #     print("\t{}: {}".format(fname_dens, exist_dens))
+        #     print("\t{}: {}".format(fname_vdis, exist_vdis))
 
         self.fname_dens = fname_dens
         self.fname_vdis = fname_vdis
@@ -81,12 +83,21 @@ class Density_Vel_Disp(SubProcess):
 
         # bin selection arbitrary but did not affect results much
         # bins = 100
-        print(len(uni_index), 'to go through')
 
         # idea is to only get velocity dispersion of other subhalos if main halo can get the fit.
         # if fit does not work , the merger is not considered
+        # tot_num = uni_index.size
         for num, m_start_ind in enumerate(tqdm.tqdm(uni_index, desc='Subhalos')):
             run_vel_disp = True
+
+            # if num < tot_num-10:
+            #     continue
+            #
+            #     # try:
+            #     #     break
+            #     # except:
+            #     #     print("break failed!")
+            #     #     continue
 
             # this scrolls through the three subhalos per merger
             for index in np.arange(m_start_ind, m_start_ind+3)[::-1]:
@@ -126,12 +137,12 @@ class Density_Vel_Disp(SubProcess):
                         # keep = np.where(stars['GFM_StellarFormationTime'][:] >= 0.0)[0]
                         keep = (stars['GFM_StellarFormationTime'][:] >= 0.0)
 
-                        # confirm there are 80 star particles (there should be from previous analysis)
+                        # confirm >80 star particles (there should be from previous analysis)
                         if np.count_nonzero(keep) < 80 and which == 3:
                             run_vel_disp = False
                             continue
 
-                        # try the profile. If a fit cannot be done, then catch error and go to next merger
+                        # If a fit cannot be done, then catch error and go to next merger
                         try:
                             var, run_vel_disp = self.find_fit(
                                 stars['Coordinates'][:][keep],
@@ -147,7 +158,7 @@ class Density_Vel_Disp(SubProcess):
                             continue
 
                         # store gamma value for stars
-                        star_gamma = var[1]
+                        star_norm, star_gamma = var
 
                         # gas second #
 
@@ -172,7 +183,7 @@ class Density_Vel_Disp(SubProcess):
                             run_vel_disp = False
                             continue
 
-                        gas_gamma = var[1]
+                        gas_norm, gas_gamma = var
 
                         # dm third
                         dm = f['PartType4']
@@ -193,11 +204,15 @@ class Density_Vel_Disp(SubProcess):
                         except RuntimeError:
                             run_vel_disp = False
                             continue
-                        dm_gamma = var[1]
+
+                        dm_norm, dm_gamma = var
 
                         # add data to list if all try/excepts are succesful
                         density_profile_out.append(
-                            [m, which, snap, sub, star_gamma, gas_gamma, dm_gamma]
+                            [m, which, snap, sub,
+                             star_norm, star_gamma,
+                             gas_norm, gas_gamma,
+                             dm_norm, dm_gamma]
                         )
 
                         # get velocity dispersion
@@ -212,7 +227,8 @@ class Density_Vel_Disp(SubProcess):
                         with h5py.File(fname_subh, 'r') as f:
                             # for testing in local directories
                             # with h5py.File('cutout_%i_%i.hdf5'%(snap, sub), 'r') as f:
-                            vdis = np.std(np.sqrt(np.sum(f['PartType4']['Velocities'][:]**2, axis=1)))
+                            v2 = f['PartType4']['Velocities'][:] ** 2
+                            vdis = np.std(np.sqrt(np.sum(v2, axis=1)))
                             vel_disp_out.append([m, which, snap, sub, vdis])
 
         # prep all the lists for read out and read out to files #
@@ -226,16 +242,20 @@ class Density_Vel_Disp(SubProcess):
         dtype = [
             ('merger', np.dtype(int)),
             ('which', np.dtype(int)),
-            ('snap', np.dtype(int)), 
-            ('sub', np.dtype(int)), 
-            ('star_gamma', np.dtype(float)), 
-            ('gas_gamma', np.dtype(float)), 
+            ('snap', np.dtype(int)),
+            ('sub', np.dtype(int)),
+            ('star_norm', np.dtype(float)),
+            ('star_gamma', np.dtype(float)),
+            ('gas_norm', np.dtype(float)),
+            ('gas_gamma', np.dtype(float)),
+            ('dm_norm', np.dtype(float)),
             ('dm_gamma', np.dtype(float))
         ]
         density_profile_out = np.core.records.fromarrays(density_profile_out, dtype=dtype)
 
-        header = 'm\twhich\tsnap\tsub\tstar_gamma\tgas_gamma\tdm_gamma'
-        fmt = '%i\t%i\t%i\t%i\t%.18e\t%.18e\t%.18e'
+        header = \
+            'm\twhich\tsnap\tsub\tstar_norm\tstar_gamma\tgas_norm\tgas_gamma\tdm_norm\tdm_gamma'
+        fmt = '%i\t%i\t%i\t%i\t%.18e\t%.18e\t%.18e\t%.18e\t%.18e\t%.18e'
         fname = self.fname_dens
         np.savetxt(fname, density_profile_out, fmt=fmt, header=header)
         print("Saved to '{}' size: {}".format(fname, os.path.getsize(fname)))
@@ -265,7 +285,7 @@ class Density_Vel_Disp(SubProcess):
 
         # radius from CoM
         # comoving to physical -- kpc to pc
-        radius = np.sqrt(np.sum((coordinates - sub_cm)**2, axis=1))*scale*1e3   
+        radius = np.sqrt(np.sum((coordinates - sub_cm)**2, axis=1))*scale*1e3
 
         # put in structured array for sorting
         dtype = [('rad', np.dtype(float)), ('mass', np.dtype(float))]
@@ -333,4 +353,3 @@ class Density_Vel_Disp(SubProcess):
             subhalo_cm_gc = gc['SubhaloCM'][:]
 
         return subs_gc, snaps_gc, subhalo_cm_gc
-

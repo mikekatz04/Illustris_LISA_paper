@@ -3,6 +3,7 @@ MAIN PURPOSE: create the final dataset of information after all of these analyse
 """
 
 import os
+import sys
 
 import numpy as np
 import h5py
@@ -34,11 +35,7 @@ class Create_Final_Data(SubProcess):
         super().__init__(core)
 
         fname = core.fname_final_data()
-
-        if os.path.exists(fname):
-            self.needed = False
-        else:
-            self.needed = True
+        self.needed = self._check_needed(fname)
 
         return
 
@@ -49,14 +46,15 @@ class Create_Final_Data(SubProcess):
 
         fname = self.core.fname_bhs_all()
         with h5py.File(fname, 'r') as bh_all:
-            if DEBUG:
+            if self.core.DEBUG:
                 print("bhs_all ({})\n\tkeys: {}".format(fname, list(bh_all.keys())))
             bh_all_partids = bh_all['ParticleIDs_new'][:]
             bh_all_snapshots = bh_all['Snapshot'][:]
             bh_all_hsml = bh_all['BH_Hsml'][:]
             bh_all_coordinates = bh_all['Coordinates'][:]
+            bh_all_mdot = bh_all['BH_Mdot'][:]
 
-        return bh_all_partids, bh_all_snapshots, bh_all_hsml, bh_all_coordinates
+        return bh_all_partids, bh_all_snapshots, bh_all_hsml, bh_all_coordinates, bh_all_mdot
 
     def gather_info_from_mergers(self, uni_mergers):
         """
@@ -65,20 +63,22 @@ class Create_Final_Data(SubProcess):
 
         fname = self.core.fname_bhs_mergers()
         with h5py.File(fname, 'r') as mergers:
-            if DEBUG:
+            if self.core.DEBUG:
                 print("mergers ({})\n\tkeys: {}".format(fname, list(mergers.keys())))
 
             mass_in = mergers['mass_in_new'][:][uni_mergers]*1e10/h
             mass_out = mergers['mass_out_new'][:][uni_mergers]*1e10/h
 
-            id_in = mergers['id_in_new'][:][uni_mergers]
-            id_out = mergers['id_out_new'][:][uni_mergers]
+            id_in_old = mergers['id_in'][:][uni_mergers]
+            id_out_old = mergers['id_out'][:][uni_mergers]
+            id_in_new = mergers['id_in_new'][:][uni_mergers]
+            id_out_new = mergers['id_out_new'][:][uni_mergers]
 
             scale = mergers['time'][:][uni_mergers]
             redshift = 1./scale - 1.
             snapshots = mergers['snapshot'][:][uni_mergers]
 
-        return mass_in, mass_out, id_in, id_out, scale, redshift, snapshots
+        return mass_in, mass_out, id_in_old, id_out_old, id_in_new, id_out_new, scale, redshift, snapshots
 
     def gather_info_from_subs_with_bhs(self):
         """
@@ -87,7 +87,7 @@ class Create_Final_Data(SubProcess):
 
         fname = self.core.fname_subs_with_bhs()
         with h5py.File(fname, 'r') as gc:
-            if DEBUG:
+            if self.core.DEBUG:
                 print("groupcat ({})\n\tkeys: {}".format(fname, list(gc.keys())))
             gc_subs = gc['SubhaloID'][:]
             gc_snaps = gc['Snapshot'][:]
@@ -102,13 +102,17 @@ class Create_Final_Data(SubProcess):
         """
 
         fname_vdisp = self.core.fname_vel_disp()
-        velocity_dispersions = np.genfromtxt(fname_vdisp, names=True, dtype=None)
+        vel_disp = np.genfromtxt(fname_vdisp, names=True, dtype=None)
+        if self.core.DEBUG:
+            print("vel_disp ({})\n\tkeys: {}".format(fname_vdisp, vel_disp.dtype.names))
 
         # use the density profiles dataset to determine the final good mergers
         fname_dens = self.core.fname_density_profiles()
-        dens_profiles = np.genfromtxt(fname_dens, names=True, dtype=None)
+        dens_prof = np.genfromtxt(fname_dens, names=True, dtype=None)
+        if self.core.DEBUG:
+            print("dens_prof ({})\n\tkeys: {}".format(fname_vdisp, dens_prof.dtype.names))
 
-        return velocity_dispersions, dens_profiles
+        return vel_disp, dens_prof
 
     def create_final_data(self):
         """
@@ -124,9 +128,9 @@ class Create_Final_Data(SubProcess):
         # Also, get the indices of each unique entry
         uni_vel, uni_vel_ind = np.unique(velocity_dispersions['m'], return_index=True)
 
-        bh_all_partids, bh_all_snapshots, bh_all_hsml, bh_all_coordinates = \
+        bh_all_partids, bh_all_snapshots, bh_all_hsml, bh_all_coordinates, bh_all_mdot = \
             self.gather_info_from_all_bhs()
-        mass_in, mass_out, id_in, id_out, scale, redshift, snapshots = \
+        mass_in, mass_out, id_in_old, id_out_old, id_in_new, id_out_new, scale, redshift, snapshots = \
             self.gather_info_from_mergers(uni_mergers)
         gc_subs, gc_snaps, gc_SubhaloMassType, gc_SubhaloVelDisp = \
             self.gather_info_from_subs_with_bhs()
@@ -139,8 +143,10 @@ class Create_Final_Data(SubProcess):
         stellar_mass_out = []
         total_mass_out = []
         separation_out = []
+        mdot_out = []
         merger_ind_out = []
-        ids_out = []
+        ids_new_out = []
+        ids_old_out = []
         masses_out = []
         density_profiles_out = []
         redshift_out = []
@@ -155,16 +161,18 @@ class Create_Final_Data(SubProcess):
         for j in tqdm.trange(len(uni_mergers), desc='Mergers'):
 
             # merger specifics
-            idi = id_in[j]
-            ido = id_out[j]
+            idn_i = id_in_new[j]
+            idn_o = id_out_new[j]
+            ido_i = id_in_old[j]
+            ido_o = id_out_old[j]
 
             msi = mass_in[j]
             mso = mass_out[j]
 
             snap = snapshots[j]
 
-            # inds_in = np.where((bh_all_partids == idi) & (bh_all_snapshots < snap))[0]
-            inds_in = (bh_all_partids == idi) & (bh_all_snapshots < snap)
+            # inds_in = np.where((bh_all_partids == idn_i) & (bh_all_snapshots < snap))[0]
+            inds_in = (bh_all_partids == idn_i) & (bh_all_snapshots < snap)
 
             # recheck snapshot cut
             if (np.count_nonzero(inds_in) < snapshot_cut) and (msi < 1e6):
@@ -174,19 +182,21 @@ class Create_Final_Data(SubProcess):
             # get the separation for this black hole
             # bh_sep_in = bh_all_hsml[inds_in[-1]]*scale[j]
             bh_sep_in = bh_all_hsml[inds_in][-1] * scale[j]
+            bh_mdot_in = bh_all_mdot[inds_in][-1]
 
             # recheck snapshot cut
-            # inds_out = np.where((bh_all_partids == ido) & (bh_all_snapshots < snap))[0]
-            inds_out = (bh_all_partids == ido) & (bh_all_snapshots < snap)
+            # inds_out = np.where((bh_all_partids == idn_o) & (bh_all_snapshots < snap))[0]
+            inds_out = (bh_all_partids == idn_o) & (bh_all_snapshots < snap)
             if (np.count_nonzero(inds_out) < snapshot_cut) and (mso < 1e6):
                 continue
 
             # get the separation for this black hole
             # bh_sep_out = bh_all_hsml[inds_out[-1]]*scale[j]
             bh_sep_out = bh_all_hsml[inds_out][-1] * scale[j]
+            bh_mdot_out = bh_all_mdot[inds_out][-1]
 
             # find index for final black hole in all bhs catalog
-            ind_bh_out = np.where((bh_all_partids == ido) & (bh_all_snapshots == snap))[0][0]
+            ind_bh_out = np.where((bh_all_partids == idn_o) & (bh_all_snapshots == snap))[0][0]
 
             # add coordinates
             coordinates_out.append(list(bh_all_coordinates[ind_bh_out]))
@@ -194,19 +204,26 @@ class Create_Final_Data(SubProcess):
             # take the max of the intial separations
             separation_out.append(np.max([bh_sep_in, bh_sep_out]))
 
+            # Take the sum of the accretion rates
+            mdot_out.append(bh_mdot_in + bh_mdot_out)
+
             # add merger index
             merger_ind_out.append(uni_mergers[j])
 
             # add all ids involved
-            ids_out.append([idi, ido, ido])
+            ids_old_out.append([ido_i, ido_o, ido_o])
+            ids_new_out.append([idn_i, idn_o, idn_o])
 
             # add masses involved
             masses_out.append([msi, mso, msi+mso])
 
             # add density profiles
             density_profiles_out.append([
+                dens_profs['star_norm'][j],
                 dens_profs['star_gamma'][j],
+                dens_profs['gas_norm'][j],
                 dens_profs['gas_gamma'][j],
+                dens_profs['dm_norm'][j],
                 dens_profs['dm_gamma'][j]
             ])
 
@@ -238,22 +255,22 @@ class Create_Final_Data(SubProcess):
                 vel_disps_trans.append(velocity_dispersions[k][4])
 
                 # get info from group catalog data
-                # ind_gc = np.where((gc_snaps == snap) & (gc_subs == sub))[0][0]
-                ind_gc = ((gc_snaps == snap) & (gc_subs == sub))
 
                 # wind phase cells are counted in type 0,
                 # even though they are really type 4 see docs
+                # ind_gc = np.where((gc_snaps == snap) & (gc_subs == sub))[0][0]
                 # stellar_mass = gc_SubhaloMassType[ind_gc][4] * 1e10/h
                 # total_mass = np.sum(gc_SubhaloMassType[ind_gc] * 1e10/h)
+                # vel disp from group catalog
+                # vel_disps_from_subs_trans.append(gc_SubhaloVelDisp[ind_gc]*np.sqrt(3))
+                ind_gc = ((gc_snaps == snap) & (gc_subs == sub))
                 stellar_mass = gc_SubhaloMassType[ind_gc][0][4] * 1e10/h
                 total_mass = np.sum(gc_SubhaloMassType[ind_gc][0] * 1e10/h)
+                # vel disp from group catalog
+                vel_disps_from_subs_trans.append(gc_SubhaloVelDisp[ind_gc][0] * np.sqrt(3))
 
                 stellar_mass_trans.append(stellar_mass)
                 total_mass_trans.append(total_mass)
-
-                # vel disp from group catalog
-                # vel_disps_from_subs_trans.append(gc_SubhaloVelDisp[ind_gc]*np.sqrt(3))
-                vel_disps_from_subs_trans.append(gc_SubhaloVelDisp[ind_gc][0] * np.sqrt(3))
 
             # add the three entry lists to the overall lists
             subs_out.append(subs_trans)
@@ -266,15 +283,24 @@ class Create_Final_Data(SubProcess):
         out_list = []
         # gather all data into single list (concatenate the quantity list)
         for i in range(len(merger_ind_out)):
-            out_list.append([merger_ind_out[i]] + snaps_out[i] + subs_out[i] + ids_out[i] +
-                            masses_out[i] + [redshift_out[i]] + [separation_out[i]] +
-                            coordinates_out[i] + density_profiles_out[i] + vel_disps_out[i] +
-                            stellar_mass_out[i] + total_mass_out[i])
+            temp = [merger_ind_out[i]] + snaps_out[i] + subs_out[i]
+            temp = temp + ids_old_out[i] + ids_new_out[i] + [mdot_out[i]] + masses_out[i]
+            temp = temp + [redshift_out[i]] + [separation_out[i]] + coordinates_out[i]
+            temp = temp + density_profiles_out[i] + vel_disps_out[i]
+            temp = temp + stellar_mass_out[i] + total_mass_out[i]
+            out_list.append(temp)
+            #     [merger_ind_out[i]] + snaps_out[i] + subs_out[i] +
+            #     ids_old_out[i] + ids_new_out[i] +
+            #     mdot_out[i] + masses_out[i] +
+            #     [redshift_out[i]] + [separation_out[i]] + coordinates_out[i] +
+            #     density_profiles_out[i] + vel_disps_out[i] +
+            #     stellar_mass_out[i] + total_mass_out[i]
+            # )
 
         # write out data
         fname = self.core.fname_final_data()
         with open(fname, 'w') as f:
-            f.write("merger\tsnap_prev_in\tsnapshot_prev_out\tsnapshot_fin_out\tsubhalo_prev_in\tsubhalo_prev_out\tsubhalo_fin_out\tid_new_prev_in\tid_new_prev_out\tid_new_fin_out\tmass_new_prev_in\tmass_new_prev_out\tmass_new_fin_out\tredshift\tseparation\tcoordinates_x\tcoordinates_y\tcoordinates_z\tstar_gamma\tgas_gamma\tdm_gamma\tvel_disp_prev_in\tvel_disp_prev_out\tvel_disp_fin_out\tstellar_mass_prev_in\tstellar_mass_prev_out\tstellar_mass_fin_out\ttotal_mass_prev_in\ttotal_mass_prev_out\ttotal_mass_fin_out\n")
+            f.write("merger\tsnap_prev_in\tsnapshot_prev_out\tsnapshot_fin_out\tsubhalo_prev_in\tsubhalo_prev_out\tsubhalo_fin_out\tid_old_prev_in\tid_old_prev_out\tid_old_fin_out\tid_new_prev_in\tid_new_prev_out\tid_new_fin_out\tmdot_sum\tmass_new_prev_in\tmass_new_prev_out\tmass_new_fin_out\tredshift\tseparation\tcoordinates_x\tcoordinates_y\tcoordinates_z\tstar_norm\tstar_gamma\tgas_norm\tgas_gamma\tdm_norm\tdm_gamma\tvel_disp_prev_in\tvel_disp_prev_out\tvel_disp_fin_out\tstellar_mass_prev_in\tstellar_mass_prev_out\tstellar_mass_fin_out\ttotal_mass_prev_in\ttotal_mass_prev_out\ttotal_mass_fin_out\n")
 
             # this ensures each data point is recorded with right dtype
             for item in out_list:

@@ -1,3 +1,8 @@
+"""
+"""
+
+import os
+import sys
 
 
 class SubProcess:
@@ -15,3 +20,21 @@ class SubProcess:
         self.base_url = "http://www.illustris-project.org/api/Illustris-%i/" % self.ill_run
 
         return
+
+    def _check_needed(self, *fnames):
+        needed = False
+        for fn in fnames:
+            exists = os.path.exists(fn)
+            if self.core.DEBUG:
+                print("\tfile: '{}', exists: {}, ".format(fn, exists))
+            if not exists:
+                needed = True
+
+        if not needed and self.core.RECREATE:
+            print("\tRecreating existing files")
+            needed = True
+
+        if self.core.DEBUG:
+            print("\tNeeded = ", needed)
+
+        return needed
