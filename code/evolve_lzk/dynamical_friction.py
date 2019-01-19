@@ -64,7 +64,7 @@ class Dynamical_Friction(Hardening_Mechanism):
         rads = evolver.rads
         vcirc = evolver.vcirc
 
-        vdisp = evolver.vdisp[:, np.newaxis]
+        vdisp = evolver.vdisp
 
         dens_other = evolver.dens_star + evolver.dens_dm
 
@@ -87,7 +87,7 @@ class Dynamical_Friction(Hardening_Mechanism):
             rad_sg = evolver.rad_sg
             # Find where binary separations are larger than circumbinary disk
             #    Make sure self-gravity cutoff is valid (i.e. positive)
-            inds = (rads < rad_sg) & (rad_sg > 0.0)
+            inds = (rads[np.newaxis, :] < rad_sg) & (rad_sg > 0.0)
             dvdt_g[inds] = 0.0
 
         # Use smoothly-attenuated DF
@@ -123,6 +123,7 @@ def _dvdt_full(mass_obj, rads, dens, vel_obj, vdisp, coul):
     erfs = np.fabs(sp.special.erf(velf) - (2.0*velf/np.sqrt(np.pi))*np.exp(-np.square(velf)))
     # erfs = 1.0
     dvdt = const * pref * erfs * coul
+    print("_dvdt_full: ", [np.shape(vv) for vv in [const, pref, erfs, coul]])
     return dvdt
 
 
