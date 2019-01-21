@@ -31,14 +31,6 @@ class Scalings:
 
         # Get the data filename
         input_fname = os.path.join(os.path.dirname(__file__), self.DATA_FNAME)
-        '''
-        input_fname = os.path.join(sets.DIR_DATA, sets.LC_DATA_FILENAME)
-        log.info("Scattering Data filename: '{}'.".format(input_fname))
-        if not os.path.isfile(input_fname):
-            err = "File not does exist '{}'.".format(input_fname)
-            log.error(err)
-            raise ValueError(err)
-        '''
 
         # Load Data
         import json
@@ -66,15 +58,6 @@ class Scalings:
 
     def _calc_K(self, *args):
         return None
-
-    '''
-    def _bound(self, val, bounds):
-        # No lower than minimum
-        val = np.maximum(val, bounds[0])
-        # No higher than maximum
-        val = np.minimum(val, bounds[1])
-        return val
-    '''
 
     def H(self, *args):
         hh = self._calc_H(*args)

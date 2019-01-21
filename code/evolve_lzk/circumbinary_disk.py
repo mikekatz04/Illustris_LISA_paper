@@ -5,6 +5,7 @@ from collections import namedtuple
 
 # from zcode.constants import NWTG, SPLC, MSOL, MPRT, YR, SIGMA_T, PC
 import zcode.astro as zastro
+import zcode.math as zmath
 
 # from mbhmergers import physics
 from . import Hardening_Mechanism, NWTG, SPLC, MSOL, PC, SIGMA_T, MPRT, YR
@@ -73,6 +74,7 @@ class Disk_Torque(Hardening_Mechanism):
         m1 = evolver.m1[:, np.newaxis]
         m2 = evolver.m2[:, np.newaxis]
         mdot = evolver.mdot[:, np.newaxis]
+        rad_ind = evolver._rad_ind
 
         # Find which array elements are in which disk regions
         regs = self._rad_regions(rads, m1+m2, mdot)
@@ -86,13 +88,16 @@ class Disk_Torque(Hardening_Mechanism):
         vset = self.tvisc(rads, m1+m2, mdot, regs=regs)
 
         # Inspiral Timescale, overall
-        t1, t2, t3, ti = self.time_inspiral(rads, m1, m2, mdot, regs=regs, qs=qset, vs=vset)
+        tset = self.time_inspiral(rads, m1, m2, mdot, regs=regs, qs=qset, vs=vset)
+        t1, t2, t3, ti = tset
 
         # Turn off drag (set time to inf) in self-gravity instability region (4)
         ti = self._self_grav(regs, ti)
 
         # Convert to hardening rate (negative) da/dt (i.e. dR/dt)
         dadt_visc = -rads/ti
+
+        self.check_timescale("DT", ti, 1e-2*PC)
 
         return dadt_visc, ti, regs, qset[-1], vset[-1]
 
@@ -233,6 +238,7 @@ class Disk_Torque(Hardening_Mechanism):
         sg_rad, sg_rad_max = self._parse_sg_rads()
         if sg_rad > 0.0:
             tinsp[regs.inds[3]] = np.inf
+
         return tinsp
 
     def _inspiral_time(self, tvs, tvs_lam, qbs):
@@ -339,13 +345,16 @@ class Disk_Torque(Hardening_Mechanism):
         # ------------------------
         # Region 1: $b=0 and r_3 < r_3^{gas/rad}$
         _inds1 = ((not beta_visc) & (rads <= cr_12))
-        inds1 = np.where(_inds1)[0]
+        # inds1 = np.where(_inds1)[0]
+        inds1 = _inds1
         # Region 2: $(b=1 and r_3 < r_3^{gas/rad})$ or $r_3^{Gas/rad} < r_3 < r_3^{es/ff}$
         _inds2 = ((rads > cr_12) & (rads <= cr_23)) | ((beta_visc) & (rads <= cr_12))
-        inds2 = np.where(_inds2)[0]
+        # inds2 = np.where(_inds2)[0]
+        inds2 = _inds2
         # Region 3: $r_3 > r_3^{es/ff}$ and $r_3 < r_3^{sg}$
         _inds3 = (rads >= cr_23)
-        inds3 = np.where(_inds3)[0]
+        # inds3 = np.where(_inds3)[0]
+        inds3 = _inds3
 
         # bads = np.where(_inds1 & _inds2)[0]
         # if bads.size:
@@ -403,7 +412,13 @@ class Disk_Torque(Hardening_Mechanism):
 
             # Check for radii larger than self-gravity critical
             num_reg1 = np.count_nonzero(rmap == 1)
-            inds4 = np.where(rads > cr_sg)[0]
+            # inds4 = np.where(rads > cr_sg)
+            inds4 = (rads > cr_sg)
+            # print("\n\ninds4 = \n", inds4, "\n\n")
+            # rad_max_ind = np.argmax(rads > cr_sg, axis=-1)
+            # frac_sg = np.count_nonzero(rads > cr_sg, axis=-1) / rads.size
+            # print("rad_max/PC = " + zmath.stats_str(rads[0, rad_max_ind]/PC))
+            # print("sg frac = " + zmath.stats_str(frac_sg, log=False))
             # Add self-gravity region to mapping
             rmap[inds4] = 4
             # Make sure only regions 2 and regions 3 are SG unstable, is settings says so
@@ -660,11 +675,11 @@ class Disk_Torque(Hardening_Mechanism):
         sg_rad_max = self.SELF_GRAV_RAD_MAX
 
         # If `SELF_GRAV_RAD` is 'None' or '0.0', then turn SG off --- i.e. no limits to drag
-        if sg_rad is None or sg_rad <= 0.0:
+        if (sg_rad is None) or (sg_rad <= 0.0):
             sg_rad_max = 0.0
             sg_rad = 0.0
         # If `SELF_GRAV_RAD_MAX` is 'None' or '0.0', then *no maximum*
-        elif sg_rad_max is None or sg_rad_max <= 0.0:
+        elif (sg_rad_max is None) or (sg_rad_max <= 0.0):
             sg_rad_max = 0.0
 
         # Otherwise, if both SG is enabled, and max-rad is given, convert to parsec

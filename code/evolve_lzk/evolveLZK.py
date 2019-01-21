@@ -33,6 +33,8 @@ from . circumbinary_disk import Disk_Torque
 from . grav_radiation import Grav_Radiation
 from . stellar_scattering import Stellar_Scattering_Scalings
 
+_DENS_CONV = MSOL / PC**3
+
 
 class EvolveLZK(MassiveBlackHoleBinaries):
 
@@ -59,6 +61,11 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         num_steps = self.NUM_STEPS
 
         input_data = np.genfromtxt(fname, names=True, dtype=None)
+        # warnings.warn("\n!!!!DOWNSAMPLING!!!!\n")
+        # NUM = 1000
+        # inds = np.random.choice(input_data.shape[0], NUM, replace=False)
+        # input_data = input_data[inds]
+
         self._input_data = input_data
         self._verbose = verbose
         self._cosmo = cosmopy.get_cosmology()
@@ -99,15 +106,29 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         # self.dens_prof_gas = [input_data['gas_norm'] * MSOL, input_data['gas_gamma']]
         # self.dens_prof_dm = [input_data['dm_norm'] * MSOL, input_data['dm_gamma']]
         # These are for radii in units of 1 pc, and gamma is the negative value
-        norms = [input_data[nn + "_norm"] * MSOL for nn in self.PARTICLE_NAMES]
+        norms = [input_data[nn + "_norm"] * _DENS_CONV for nn in self.PARTICLE_NAMES]
         gammas = [input_data[nn + "_gamma"] for nn in self.PARTICLE_NAMES]
+        for ii in range(len(norms)):
+            bads = (norms[ii] < 0.0)
+            num_bad = np.count_nonzero(bads)
+            if num_bad > 0:
+                num_all = bads.size
+                frac = num_bad/num_all
+                reset_perc = 10.0
+                reset_val = np.percentile(norms[ii][~bads], reset_perc)
+                print("BAD ", self.PARTICLE_NAMES[ii], " {}/{} = {}".format(
+                    num_bad, num_all, frac))
+                print("\tresetting to {:.1f}%ile value: {:.1e}".format(reset_perc, reset_val))
+                norms[ii][bads] = reset_val
+
         self._dens_prof_norms = np.array(norms)
         self._dens_prof_gammas = np.array(gammas)
 
         print("_dens_prof_norms.shape = ", self._dens_prof_norms.shape)
         # self.mdot = zastro.eddington_accretion(mt)
-        warnings.warn("CHECK UNITS OF MDOT")
-        self.mdot = input_data['mdot_sum']
+        # warnings.warn("CHECK UNITS OF MDOT")
+        # Illustris units ===>  g/s
+        self.mdot = input_data['mdot_sum'] * (1e10 * MSOL) / (0.978 * GYR)
 
         self.eccen = e_0
 
@@ -122,6 +143,8 @@ class EvolveLZK(MassiveBlackHoleBinaries):
 
         # Binary circular velocity
         self.vcirc = vel_circ(mt[:, np.newaxis], mr[:, np.newaxis], self.rads[np.newaxis, :])
+        rad_ind = zmath.argnearest(self.rads, PC)
+        self._rad_ind = rad_ind
 
         if verbose:
             print("Mtot = " + zmath.stats_str(mt, log=True))
@@ -130,6 +153,10 @@ class EvolveLZK(MassiveBlackHoleBinaries):
             print("sepa = " + zmath.stats_str(self.sep0, log=False))
             print("gal_mstar = " + zmath.stats_str(self.gal_mstar, log=True))
             print("gal_mtot = " + zmath.stats_str(self.gal_mtot, log=True))
+            print("vcirc[pc] = " + zmath.stats_str(self.vcirc[:, rad_ind], log=False))
+            print("Mdot = " + zmath.stats_str(self.mdot, log=False))
+            fedd = self.mdot/(mt*7e-15)
+            print("fedd = " + zmath.stats_str(fedd, log=False))
             # for gg, nn in zip(self.gammas.T, names):
             #     print("{} = ".format(nn) + zmath.stats_str(gg))
             for ii, pn in enumerate(self.PARTICLE_NAMES):
@@ -158,9 +185,6 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         if verbose:
             print("Running `EvolveLZK.init_mass_profile_arrays()")
 
-        # TODO: FIX ALL THIS
-        warnings.warn("FIX TEMPORARY MASS PROFILES!")
-
         rads = self.rads
         vols = 4*np.pi * np.power(rads, 3) / 3
         dv = np.concatenate(([vols[0]], vols[1:] - vols[:-1]))
@@ -182,6 +206,7 @@ class EvolveLZK(MassiveBlackHoleBinaries):
 
         warnings.warn("Using fixed velocity dispersion!")
         self.vdisp = self.gal_vdisp[:, np.newaxis] * np.ones_like(rads)[np.newaxis, :]
+        print("vdisp[pc] = " + zmath.stats_str(self.vdisp[:, self._rad_ind], log=False))
 
         return
 
@@ -231,7 +256,7 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         #  -----------------
 
         # Minimum Impact Parameter
-        use_vel = np.maximum(self.vcirc, self.vdisp[:, np.newaxis])
+        use_vel = np.maximum(self.vcirc, self.vdisp)
         bmin = NWTG * self.m2[:, np.newaxis] / np.square(use_vel)
 
         # Maximum impact parameter (See [Begelman, Blandford, Rees 1980])
@@ -329,7 +354,7 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         grav_rad = Grav_Radiation(self)
 
         beg = printer(run="Grav_Radiation.dadt()", beg=beg)
-        self.dadt_gw[:], *_ = grav_rad.dadt()
+        self.dadt_gw[:] = grav_rad.dadt()
         printer(beg=beg)
 
         self.dadt[:] = self.dadt_df + self.dadt_sc + self.dadt_cd + self.dadt_gw
