@@ -18,7 +18,9 @@ Notes
 
 import numpy as np
 
-from . import Hardening_Mechanism, SPLC, NWTG
+import zcode.math as zmath
+
+from . import Hardening_Mechanism, SPLC, NWTG, PC, MSOL
 
 _CONST_DIMENS = np.power(NWTG, 3.0)/np.power(SPLC, 5.0)
 
@@ -43,8 +45,11 @@ class Grav_Radiation(Hardening_Mechanism):
         m2 = self._evolver.m2[:, np.newaxis]
         rads = self._evolver.rads[np.newaxis, :]
         # eccs = 0.0
-
+        print(m1.shape, m2.shape, rads.shape)
+        print(zmath.stats_str(m1/MSOL))
+        print(zmath.stats_str(m2/MSOL))
         dadt = -_CONST_DIMENS * (64.0/5.0) * m1 * m2 * (m1+m2) * np.power(rads, -3.0)
+
         '''
         decdt = np.zeros_like(dadt)
         # Only bother with the eccentricity terms if non-zero
@@ -57,6 +62,8 @@ class Grav_Radiation(Hardening_Mechanism):
             dadt *= ecc_fact_a
             decdt *= ecc_fact_e
         '''
+
+        self.check_timescale("GW", None, 1e-2*PC, extr=[1e4, 1e12], dadt=dadt)
 
         # taus = -rads/dadt
         # return dadt, decdt, taus

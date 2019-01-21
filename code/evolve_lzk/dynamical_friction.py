@@ -1,7 +1,8 @@
 import numpy as np
 import scipy as sp
 
-# from zcode.constants import NWTG, MSOL
+# from zcode.constants import NWTG, MSOL, YR
+import zcode.math as zmath
 
 # from mbhmergers import constants
 # from mbhmergers.hardening import Hardening_Mechanism, dvdt_to_dadt
@@ -9,7 +10,7 @@ import scipy as sp
 # WHICH_BH = constants.WHICH_BH
 # ATTENUATION = constants.ATTENUATION
 
-from . import Hardening_Mechanism, NWTG, MSOL
+from . import Hardening_Mechanism, NWTG, MSOL, PC, YR
 
 
 class Dynamical_Friction(Hardening_Mechanism):
@@ -62,6 +63,8 @@ class Dynamical_Friction(Hardening_Mechanism):
         coulomb = self.COULOMB_LOGARITHM
 
         rads = evolver.rads
+        # KPC = 1000 * PC
+        # kpc_ind = zmath.argnearest(rads, KPC)
         vcirc = evolver.vcirc
 
         vdisp = evolver.vdisp
@@ -100,11 +103,16 @@ class Dynamical_Friction(Hardening_Mechanism):
             dvdt_o = _dvdt_full(mass_obj, rads, dens_other, vcirc, vdisp, coulomb)
 
         dvdt = dvdt_o + dvdt_g
-        dadt, tau = self.dvdt_to_dadt(rads, vcirc, dvdt)
+        try:
+            dadt, tau = self.dvdt_to_dadt(rads, vcirc, dvdt)
+        except ValueError:
+            bads = np.where(dvdt > 0.0)
+            print(dvdt[bads][0], dvdt_g[bads][0], dvdt_o[bads][0])
+            print(vcirc[bads][0], vdisp[bads][0])
+            print(dens_other[bads][0], evolver.dens_gas[bads][0])
+            raise
+        self.check_timescale("DF", tau, 1e3*PC, extr=[1e4, 1e12])
 
-        # dadt, tau = dvdt_to_dadt(rads, vcirc, dvdt)
-        # dadt_g, tau_g = dvdt_to_dadt(rads, vcirc, dvdt_g)
-        # return dadt, dadt_g
         return dadt
 
 
@@ -123,7 +131,6 @@ def _dvdt_full(mass_obj, rads, dens, vel_obj, vdisp, coul):
     erfs = np.fabs(sp.special.erf(velf) - (2.0*velf/np.sqrt(np.pi))*np.exp(-np.square(velf)))
     # erfs = 1.0
     dvdt = const * pref * erfs * coul
-    print("_dvdt_full: ", [np.shape(vv) for vv in [const, pref, erfs, coul]])
     return dvdt
 
 
