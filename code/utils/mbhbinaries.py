@@ -11,6 +11,7 @@ def mass_ratio_func(m1, m2):
 
 
 class MassiveBlackHoleBinaries:
+
     def evolve(self):
         self.formation_time = cosmo.age(self.z).value*1e9
         self.t_delay, self.e_f = self.calculate_timescale()
