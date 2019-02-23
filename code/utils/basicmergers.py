@@ -3,11 +3,10 @@ from utils.mbhbinaries import MassiveBlackHoleBinaries
 
 
 class MagicMergers(MassiveBlackHoleBinaries):
-    def __init__(self, fp):
-        data = np.genfromtxt(fp, names=True, dtype=None)
-        self.z = data['redshift']
-        self.m1 = data['m1']
-        self.m2 = data['m2']
+    def __init__(self, m1, m2, z):
+        self.z = z
+        self.m1 = m1
+        self.m2 = m2
 
     def calculate_timescale(self):
         # Magic mergers, no timescale
@@ -16,10 +15,9 @@ class MagicMergers(MassiveBlackHoleBinaries):
 
 class MagicMergersOrigExtract(MassiveBlackHoleBinaries):
     def __init__(self, m1, m2, z):
-        data = np.genfromtxt(fp, names=True, dtype=None)
-        self.z = data['redshift']
-        self.m1 = data['m1']
-        self.m2 = data['m2']
+        self.z = z
+        self.m1 = m1
+        self.m2 = m2
 
     def calculate_timescale(self):
         # Magic mergers, no timescale
@@ -31,10 +29,9 @@ class MagicMergersOrigExtract(MassiveBlackHoleBinaries):
 
 class ConstantTime(MassiveBlackHoleBinaries):
     def __init__(self, m1, m2, z):
-        data = np.genfromtxt(fp, names=True, dtype=None)
-        self.z = data['redshift']
-        self.m1 = data['m1']
-        self.m2 = data['m2']
+        self.z = z
+        self.m1 = m1
+        self.m2 = m2
 
     def calculate_timescale(self):
         # Constant timescale of 1 Gyr
