@@ -27,7 +27,7 @@ def z_at(coalescence_time, num_interp_points=1000):
 def detection_rate_main(
                         num_catalogs, t_obs, duration, fp, evolve_key_guide, kde_key_guide,
                         evolve_class, merger_rate_kwargs, snr_kwargs,
-                        only_detectable=False, snr_threshold=8.0):
+                        only_detectable=True, snr_threshold=8.0):
 
     begin_time = time.time()
 
@@ -84,18 +84,18 @@ def detection_rate_main(
     names = 'cat,t_event,m1,m2,z_coal,snr,snr_ins,snr_mr'
 
     if only_detectable:
-        inds_keep = np.where(snr_out[snr_kwargs['sensitivity_curves'] + '_wd_all'] > 8.0)[0]
+        inds_keep = np.where(snr_out[snr_kwargs['sensitivity_curve'] + '_wd_all'] > 8.0)[0]
 
     else:
-        inds_keep = np.arange(len(snr_out[snr_kwargs['sensitivity_curves'] + '_wd_all']))
+        inds_keep = np.arange(len(snr_out[snr_kwargs['sensitivity_curve'] + '_wd_all']))
 
     output = np.core.records.fromarrays(
                 [gc.catalog_num[inds_keep], gc.t_event[inds_keep],
                  gc.m1[inds_keep], gc.m2[inds_keep], gc.z_coal[inds_keep],
-                 snr_out[snr_kwargs['sensitivity_curves'] + '_wd_all'][inds_keep],
-                 snr_out[snr_kwargs['sensitivity_curves'] + '_wd_ins'],
-                 (snr_out[snr_kwargs['sensitivity_curves'] + '_wd_mrg']**2
-                  + snr_out[snr_kwargs['sensitivity_curves'] + '_wd_rd']**2)**(1/2)],
+                 snr_out[snr_kwargs['sensitivity_curve'] + '_wd_all'][inds_keep],
+                 snr_out[snr_kwargs['sensitivity_curve'] + '_wd_ins'][inds_keep],
+                 (snr_out[snr_kwargs['sensitivity_curve'] + '_wd_mrg'][inds_keep]**2
+                  + snr_out[snr_kwargs['sensitivity_curve'] + '_wd_rd'][inds_keep]**2)**(1/2)],
                 names=names)
 
     print('Total Duration:', time.time()-begin_time)
