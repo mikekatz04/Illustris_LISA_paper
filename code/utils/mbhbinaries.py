@@ -1,7 +1,10 @@
-from astropy.cosmology import Planck15 as cosmo
 import scipy.constants as ct
 import numpy as np
 import pdb
+
+from astropy.cosmology import FlatLambdaCDM
+
+cosmo = FlatLambdaCDM(H0=70.4, Om0=0.2726, Ob0=0.0456)
 
 
 def mass_ratio_func(m1, m2):

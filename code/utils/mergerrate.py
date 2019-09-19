@@ -1,5 +1,7 @@
 import numpy as np
-from astropy.cosmology import Planck15 as cosmo
+from astropy.cosmology import FlatLambdaCDM
+
+cosmo = FlatLambdaCDM(H0=70.4, Om0=0.2726, Ob0=0.0456)
 
 
 class MergerRate:
@@ -37,3 +39,16 @@ class MergerRate:
         if return_for_plot:
             return self.zs, integrand, self.rate
         return self.rate
+
+    def merger_rate_uncertainty(self):
+        trans = np.searchsorted(self.zs, self.z_vals)
+        uni_vals, uni_num = np.unique(trans, return_counts=True)
+
+        self.dN_dzdVc = np.zeros_like(self.zs)
+
+        self.dN_dzdVc[uni_vals] = uni_num/(self.dz*self.Vc)
+
+        integrand = self.dN_dzdVc*self.factor*self.dz
+
+        self.uncertainty = np.sqrt(np.sum((integrand[::-1])**2))
+        return self.uncertainty

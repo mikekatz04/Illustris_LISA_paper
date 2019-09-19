@@ -20,6 +20,7 @@ import scipy.interpolate   # noqa
 # from scipy.special import hyp2f1
 import numpy as np
 # import pdb
+from scipy import constants as ct
 
 import zcode.math as zmath
 # import zcode.astro as zastro
@@ -65,6 +66,7 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         # NUM = 1000
         # inds = np.random.choice(input_data.shape[0], NUM, replace=False)
         # input_data = input_data[inds]
+        self.z = input_data['redshift']
 
         self._input_data = input_data
         self._verbose = verbose
@@ -435,6 +437,9 @@ class EvolveLZK(MassiveBlackHoleBinaries):
         self.redz_coal = redz_coal
         self.inds_coal = inds_coal
 
+        self.m1 = self.m1/MSOL  # changed from original version to return mass in solar masses
+        self.m2 = self.m2/MSOL  # changed from original version to return mass in solar masses
+        durs = durs/(ct.Julian_year)  # changed from original version so that it returns in years
         return durs, eccen_final
 
 

@@ -14,28 +14,44 @@ Msun = 1.989e30
 class EvolveFDFA(MassiveBlackHoleBinaries):
         # put all quantities into arrays to determine which is major galaxy and minor galaxy'
 
-    def __init__(self, m1, m2, vel_disp_1,  vel_disp_2, star_gamma, separation, z, e_0=0.0):
-        self.z = z
+    def __init__(self, fname, e_0=0.0):
+
+        data = np.genfromtxt(fname, names=True, dtype=None)
+
+        evolve_key_dict = {'m1': 'mass_new_prev_in',
+                           'm2': 'mass_new_prev_out',
+                           'z': 'redshift',
+                           'separation': 'separation',
+                           'star_gamma': 'star_gamma',
+                           'vel_disp_1': 'vel_disp_prev_in',
+                           'vel_disp_2': 'vel_disp_prev_out'}
+
+        for key, col_name in evolve_key_dict.items():
+            setattr(self, key, data[col_name])
+
         # find index of major and minor
-        major_1 = (m1 >= m2)
-        major_2 = (m1 < m2)
+        major_1 = (self.m1 >= self.m2)
+        major_2 = (self.m1 < self.m2)
 
         # major black hole mass
-        self.M = self.m1 = m1*major_1 + m2*major_2
+        self.M = self.m1*major_1 + self.m2*major_2
         # minor black hole mass
-        self.m = self.m2 = m1*major_2 + m2*major_1
+        self.m = self.m1*major_2 + self.m2*major_1
+
+        self.m1 = self.M
+        self.m2 = self.m
 
         # small s denotes secondary,small m is primary (same as paper)
-        self.vel_disp_m = vel_disp_1*major_1 + vel_disp_2*major_2
-        self.vel_disp_s = vel_disp_1*major_2 + vel_disp_2*major_1
+        self.vel_disp_m = self.vel_disp_1*major_1 + self.vel_disp_2*major_2
+        self.vel_disp_s = self.vel_disp_1*major_2 + self.vel_disp_2*major_1
 
         # find large scale orbital decay time
-        self.gamma = np.clip(star_gamma, 0.55, 2.49)
+        self.gamma = np.clip(self.star_gamma, 0.55, 2.49)
 
         # r_infl determined analytically
         self.r_infl = AnalyticApproximations.influence_radius(self.M, self.vel_disp_m)
 
-        self.R_e_m = separation
+        self.R_e_m = self.separation
 
         self.q = mass_ratio_func(self.M, self.m)
 

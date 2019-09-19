@@ -9,7 +9,7 @@ import scipy.interpolate as interpolate
 from utils.mergerrate import MergerRate
 from utils.mbhbinaries import MassiveBlackHoleBinaries, AnalyticApproximations, mass_ratio_func
 from utils.evolveFDFA import EvolveFDFA
-from utils.basicmergers import MagicMergers
+from utils.basicmergers import NoDelay, NoDelayOrigExtract
 from utils.resample import KDEResample, GenerateCatalog
 
 from gwsnrcalc.gw_snr_calculator import snr
@@ -25,17 +25,15 @@ def z_at(coalescence_time, num_interp_points=1000):
 
 
 def detection_rate_main(
-                        num_catalogs, t_obs, duration, fp, evolve_key_guide, kde_key_guide,
+                        num_catalogs, t_obs, duration, fp, evolve_kwargs, kde_key_guide,
                         evolve_class, merger_rate_kwargs, snr_kwargs,
-                        only_detectable=True, snr_threshold=8.0):
+                        only_detectable=True, snr_threshold=8.0, num_repeats=1):
 
     begin_time = time.time()
 
     input_data = np.genfromtxt(fp, names=True, dtype=None)
 
-    evolve_dict = {key: input_data[evolve_key_guide[key]] for key in evolve_key_guide.keys()}
-
-    mbh = evolve_class(**evolve_dict)
+    mbh = evolve_class(**evolve_kwargs)
     mbh.evolve()
 
     # mergers in hubble time
@@ -62,42 +60,54 @@ def detection_rate_main(
     kde = KDEResample(data=input_to_kde, weights=kde_weights, names=['m1', 'm2', 'z_coal'])
     kde.make_kernel(bound=1e-6)
 
-    # Generate Catalog
-    gc = GenerateCatalog(poisson_parameter=merger_rate, duration=duration, binary_kde=kde)
-    gc.make_catalogs(num_catalogs=num_catalogs)
+    output = {}
+    for repeat in range(num_repeats):
+        # Generate Catalog
+        gc = GenerateCatalog(poisson_parameter=merger_rate, duration=duration, binary_kde=kde)
+        gc.make_catalogs(num_catalogs=num_catalogs)
 
-    # Find SNRs
+        # Find SNRs
 
-    # TODO: REMOVING HIGH MASS RATIOS BECAUSE PHENOMD NOT SUITABLE. CHECK THESE
-    inds_keep = np.where(mass_ratio_func(gc.m1, gc.m2) > 1e-4)[0]
+        # TODO: REMOVING HIGH MASS RATIOS BECAUSE PHENOMD NOT SUITABLE. CHECK THESE
+        inds_keep = np.where(mass_ratio_func(gc.m1, gc.m2) > 1e-4)[0]
 
-    for name in ['catalog_num', 't_event', 'm1', 'm2', 'z_coal']:
-        setattr(gc, name, getattr(gc, name)[inds_keep])
+        for name in ['catalog_num', 't_event', 'm1', 'm2', 'z_coal']:
+            setattr(gc, name, getattr(gc, name)[inds_keep])
 
-    # start and end time of waveform
-    st = gc.t_event
-    et = 0.0*((st - t_obs) < 0.0) + (st - t_obs)*((st - t_obs) >= 0.0)
+        # start and end time of waveform
+        st = gc.t_event
+        et = 0.0*((st - t_obs) < 0.0) + (st - t_obs)*((st - t_obs) >= 0.0)
 
-    spin = snr_kwargs['spin']
-    snr_out = snr(gc.m1, gc.m2, spin, spin, gc.z_coal, st, et, **snr_kwargs)
+        spin = snr_kwargs['spin']
+        snr_out = snr(gc.m1, gc.m2, spin, spin, gc.z_coal, st, et, **snr_kwargs)
 
-    names = 'cat,t_event,m1,m2,z_coal,snr,snr_ins,snr_mr'
+        names = 'cat,t_event,m1,m2,z_coal,snr,snr_ins,snr_mr'
 
-    if only_detectable:
-        inds_keep = np.where(snr_out[snr_kwargs['sensitivity_curve'] + '_wd_all'] > 8.0)[0]
+        if isinstance(snr_kwargs['sensitivity_curves'], str):
+            snr_kwargs['sensitivity_curves'] = [snr_kwargs['sensitivity_curves']]
 
-    else:
-        inds_keep = np.arange(len(snr_out[snr_kwargs['sensitivity_curve'] + '_wd_all']))
+        for sc in snr_kwargs['sensitivity_curves']:
+            if only_detectable:
+                    inds_keep = np.where(snr_out[sc + '_wd_all'] > 8.0)[0]
 
-    output = np.core.records.fromarrays(
-                [gc.catalog_num[inds_keep], gc.t_event[inds_keep],
-                 gc.m1[inds_keep], gc.m2[inds_keep], gc.z_coal[inds_keep],
-                 snr_out[snr_kwargs['sensitivity_curve'] + '_wd_all'][inds_keep],
-                 snr_out[snr_kwargs['sensitivity_curve'] + '_wd_ins'][inds_keep],
-                 (snr_out[snr_kwargs['sensitivity_curve'] + '_wd_mrg'][inds_keep]**2
-                  + snr_out[snr_kwargs['sensitivity_curve'] + '_wd_rd'][inds_keep]**2)**(1/2)],
-                names=names)
+            else:
+                for sc in snr_kwargs['sensitivity_curves']:
+                    inds_keep = np.arange(len(snr_out[sc + '_wd_all']))
 
+            out_list = [gc.catalog_num[inds_keep], gc.t_event[inds_keep], gc.m1[inds_keep],
+                        gc.m2[inds_keep], gc.z_coal[inds_keep]]
+
+            snr_final = [snr_out[sc + '_wd_all'][inds_keep],
+                         snr_out[sc + '_wd_ins'][inds_keep],
+                         (snr_out[sc + '_wd_mrg'][inds_keep]**2
+                          + snr_out[sc + '_wd_rd'][inds_keep]**2)**(1/2)]
+
+            trans = np.core.records.fromarrays(out_list + snr_final, names=names)
+            if repeat == 0:
+                output[sc] = trans
+            else:
+                output[sc] = np.concatenate([output[sc], trans])
+        print(repeat + 1, 'out of', num_repeats)
     print('Total Duration:', time.time()-begin_time)
     return output
 
@@ -136,9 +146,9 @@ if __name__ == "__main__":
                 merger_rate_kwargs, snr_kwargs, only_detectable=False,
                 snr_threshold=8.0)
 
-    #import matplotlib.pyplot as plt
+    # import matplotlib.pyplot as plt
 
-    #plt.hist()
+    # plt.hist()
 
     import pdb
     pdb.set_trace()
