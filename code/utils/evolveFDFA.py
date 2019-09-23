@@ -72,7 +72,7 @@ class EvolveFDFA(MassiveBlackHoleBinaries):
 
         if return_arr:
             return (np.asarray([self.large_scale_decay_time,
-                    self.DF_timescale, self.Hardening_timescale]).T)
+                    self.DF_timescale, self.Hardening_GW_timescale]).T)
 
         return (self.large_scale_decay_time + self.DF_timescale +
                 self.Hardening_GW_timescale, self.e_f)
